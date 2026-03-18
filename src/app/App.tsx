@@ -4,19 +4,25 @@ import { AuthProvider } from './context/AuthContext';
 import { BookProvider } from './context/BookContext';
 import { LoanProvider } from './context/LoanContext';
 import { LoanRequestProvider } from './context/LoanRequestContext';
+import { SettingsProvider } from './context/SettingsContext';
+import { AuditLogProvider } from './context/AuditLogContext';
 import { Toaster } from 'sonner';
 
 function App() {
   return (
     <AuthProvider>
-      <BookProvider>
-        <LoanProvider>
-          <LoanRequestProvider>
-            <RouterProvider router={router} />
-            <Toaster position="top-right" richColors />
-          </LoanRequestProvider>
-        </LoanProvider>
-      </BookProvider>
+      <AuditLogProvider>
+        <SettingsProvider>
+          <BookProvider>
+            <LoanProvider>
+              <LoanRequestProvider>
+                <RouterProvider router={router} />
+                <Toaster position="top-right" richColors />
+              </LoanRequestProvider>
+            </LoanProvider>
+          </BookProvider>
+        </SettingsProvider>
+      </AuditLogProvider>
     </AuthProvider>
   );
 }

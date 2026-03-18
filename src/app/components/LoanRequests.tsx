@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
   Search, Check, X, Clock, AlertCircle
 } from 'lucide-react';
@@ -8,12 +9,14 @@ import { useAuth } from '../context/AuthContext';
 import { useBooks } from '../context/BookContext';
 import { useLoanRequests } from '../context/LoanRequestContext';
 import { useLoans } from '../context/LoanContext';
+import { useSettings } from '../context/SettingsContext';
 
 export function LoanRequests() {
   const { user: currentUser, users } = useAuth();
   const { books, updateBook } = useBooks();
   const { loanRequests, updateLoanRequest } = useLoanRequests();
   const { addLoan } = useLoans();
+  const { settings } = useSettings();
   
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -44,8 +47,11 @@ export function LoanRequests() {
     }
 
     // Crear préstamo
+    const requestUser = users.find(u => u.id === request.userId);
+    const loanDays = requestUser?.role === 'Profesor' || requestUser?.role === 'Administrador' ? settings.maxLoanDaysProf : settings.maxLoanDaysStudent;
+    
     const borrowDate = new Date().toISOString().split('T')[0];
-    const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dueDate = new Date(Date.now() + loanDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
     addLoan({
       userId: request.userId,
@@ -99,17 +105,7 @@ export function LoanRequests() {
         <div className="flex items-center gap-6">
           <NotificationBell />
           <div className="w-px h-8 bg-neutral-200"></div>
-          <div className="flex items-center gap-3 cursor-pointer group">
-            <div className="text-right hidden sm:block">
-              <p className="font-semibold text-sm text-gray-900 group-hover:text-[#2B74FF] transition-colors">{currentUser?.name}</p>
-              <p className="text-neutral-400 text-xs font-medium">{currentUser?.role}</p>
-            </div>
-            <ImageWithFallback 
-              src={currentUser?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150"} 
-              alt="Profile" 
-              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
-            />
-          </div>
+          <UserProfileDropdown />
         </div>
       </header>
 

@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Outlet, Link, useLocation, Navigate } from 'react-router';
 import { 
   Search, Bell, LayoutDashboard, BookOpen, BookText, 
@@ -6,8 +7,9 @@ import {
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useAuth, Screen } from '../context/AuthContext';
-import duckyLogo from '/placeholder-logo.png';
-import { Toaster } from './ui/sonner';
+import { useSettings } from '../context/SettingsContext';
+import { Toaster } from 'sonner';
+import { HelpModal } from './HelpModal';
 
 const NAV_ITEMS: Array<{ icon: any; label: string; path: string; screenId: Screen }> = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/inicio', screenId: 'inicio' },
@@ -21,11 +23,31 @@ const NAV_ITEMS: Array<{ icon: any; label: string; path: string; screenId: Scree
 ];
 
 export function RootLayout() {
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const location = useLocation();
   const { user, logout, getUserPermissions } = useAuth();
+  const { settings } = useSettings();
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (settings.maintenanceMode && user.role !== 'Administrador') {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#F8FAFC] font-['Montserrat',_sans-serif]">
+        <div className="text-center max-w-md p-8 bg-white rounded-3xl shadow-sm border border-neutral-100">
+          <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Modo Mantenimiento</h2>
+          <p className="text-neutral-500 mb-8 leading-relaxed">Nuestra plataforma se encuentra temporalmente en mantenimiento para mejorar tu experiencia. Por favor, intenta de nuevo más tarde.</p>
+          <button 
+            onClick={logout}
+            className="w-full bg-[#2B74FF] hover:bg-blue-600 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md shadow-[#2B74FF]/20"
+          >
+            Volver al inicio
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const userPermissions = getUserPermissions(user.role);
@@ -38,7 +60,7 @@ export function RootLayout() {
       <aside className="w-64 bg-white border-r border-neutral-100 flex flex-col h-full shrink-0 shadow-sm z-10">
         <div className="h-24 flex items-center justify-center border-b border-neutral-100 px-6 shrink-0">
           <ImageWithFallback 
-            src={duckyLogo} 
+            src="/logoDucky.jpeg" 
             alt="Ducky University Bookstore" 
             className="w-full h-full object-contain p-2"
           />
@@ -65,7 +87,10 @@ export function RootLayout() {
         </nav>
 
         <div className="p-4 border-t border-neutral-100 space-y-1">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-neutral-500 hover:bg-[#B5DBF7]/20 hover:text-[#2B74FF] transition-all font-medium text-sm">
+          <button 
+            onClick={() => setIsHelpOpen(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-neutral-500 hover:bg-[#B5DBF7]/20 hover:text-[#2B74FF] transition-all font-medium text-sm"
+          >
             <HelpCircle className="w-5 h-5 text-neutral-400" />
             Ayuda
           </button>
@@ -83,6 +108,9 @@ export function RootLayout() {
 
       {/* Toast Notifications */}
       <Toaster richColors position="top-right" />
+
+      {/* Help Modal */}
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
     </div>
   );

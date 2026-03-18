@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"vite\" \"nodemon server/index.js\"",
+    "dev:frontend": "vite",
     "build": "vite build",
     "server": "nodemon server/index.js"
   },
@@ -72,6 +73,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",
     "@vitejs/plugin-react": "4.7.0",
+    "concurrently": "^9.2.1",
     "tailwindcss": "^4.2.1",
     "vite": "6.3.5"
   },

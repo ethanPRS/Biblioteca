@@ -1,43 +1,57 @@
 import React, { useState } from 'react';
+import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
   Settings, Save, Bell, Shield, Database, Palette, 
-  Mail, Clock, SlidersHorizontal, UserCheck
+  Mail, Clock, SlidersHorizontal, UserCheck, X, Activity, HardDriveDownload
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { NotificationBell } from './NotificationBell';
+import { useSettings } from '../context/SettingsContext';
+import { toast } from 'sonner';
+import { useAuditLogs } from '../context/AuditLogContext';
 
 export function SettingsConfig() {
   const { user } = useAuth();
+  const { settings, updateSettings } = useSettings();
+  const { logs, addLog } = useAuditLogs();
+  
   const [activeTab, setActiveTab] = useState('general');
   const [isSaving, setIsSaving] = useState(false);
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [lastBackup, setLastBackup] = useState('Hoy a las 03:00 AM');
 
-  // Settings State
-  const [settings, setSettings] = useState({
-    libraryName: 'Ducky University Bookstore',
-    contactEmail: 'biblioteca@ducky.edu',
-    maxLoanDaysStudent: 14,
-    maxLoanDaysProf: 30,
-    maxBooksStudent: 3,
-    maxBooksProf: 10,
-    dailyFineAmount: 10,
-    fineCurrency: 'MXN',
-    enableNotifications: true,
-    autoReminders: true,
-    maintenanceMode: false
-  });
+  const handleBackup = async () => {
+    setIsBackingUp(true);
+    toast.info("Iniciando respaldo de la base de datos...");
+    try {
+      const res = await fetch('http://localhost:5001/api/backup', { method: 'POST' });
+      if (res.ok) {
+        setLastBackup('Hoy a las ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
+        toast.success("Base de datos respaldada correctamente", { description: "El archivo .db se ha guardado en server/db/backups/" });
+        addLog('Generó un respaldo de la Base de Datos', 'Sistema');
+      } else {
+        toast.error("Error al respaldar la base de datos");
+      }
+    } catch (error) {
+      toast.error("Error de conexión al respaldar");
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
-    setSettings(prev => ({ ...prev, [e.target.name]: value }));
+    updateSettings({ [e.target.name]: value });
   };
 
   const handleSave = () => {
     setIsSaving(true);
     setTimeout(() => {
       setIsSaving(false);
-      // Here you would normally save to context/backend
-      alert("Configuraciones guardadas exitosamente.");
+      toast.success("Configuraciones guardadas exitosamente.");
+      addLog(`Modificó la configuración`, 'Configuración');
     }, 800);
   };
 
@@ -58,17 +72,7 @@ export function SettingsConfig() {
         <div className="flex items-center gap-6">
           <NotificationBell />
           <div className="w-px h-8 bg-neutral-200"></div>
-          <div className="flex items-center gap-3 cursor-pointer group">
-            <div className="text-right hidden sm:block">
-              <p className="font-semibold text-sm text-gray-900 group-hover:text-[#2B74FF] transition-colors">{user?.name}</p>
-              <p className="text-neutral-400 text-xs font-medium">{user?.role}</p>
-            </div>
-            <ImageWithFallback 
-              src={user?.avatar || ""} 
-              alt="Profile" 
-              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
-            />
-          </div>
+          <UserProfileDropdown />
         </div>
       </header>
 
@@ -124,25 +128,25 @@ export function SettingsConfig() {
                   </h3>
                   
                   <div className="space-y-6 max-w-xl">
-                    <div className="space-y-2">
+                    <div className="space-y-2 opacity-70">
                       <label className="text-sm font-semibold text-gray-900 block">Nombre de la Biblioteca</label>
                       <input 
                         type="text" 
                         name="libraryName"
                         value={settings.libraryName}
-                        onChange={handleChange}
-                        className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20"
+                        disabled
+                        className="w-full bg-neutral-100 border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium text-neutral-600 cursor-not-allowed select-none"
                       />
                     </div>
                     
-                    <div className="space-y-2">
+                    <div className="space-y-2 opacity-70">
                       <label className="text-sm font-semibold text-gray-900 block">Correo de Contacto (Soporte)</label>
                       <input 
                         type="email" 
                         name="contactEmail"
                         value={settings.contactEmail}
-                        onChange={handleChange}
-                        className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20"
+                        disabled
+                        className="w-full bg-neutral-100 border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium text-neutral-600 cursor-not-allowed select-none"
                       />
                     </div>
 
@@ -260,7 +264,10 @@ export function SettingsConfig() {
                     <div>
                       <h4 className="font-bold text-gray-900 text-sm mb-1">Auditoría de Administradores</h4>
                       <p className="text-xs text-neutral-600 mb-4">Revisa qué cuentas tienen privilegios para modificar estas configuraciones.</p>
-                      <button className="text-xs font-bold text-orange-600 bg-white px-4 py-2 rounded-lg border border-orange-200 hover:bg-orange-100 transition-colors">
+                      <button 
+                        onClick={() => setIsActivityModalOpen(true)}
+                        className="text-xs font-bold text-orange-600 bg-white px-4 py-2 rounded-lg border border-orange-200 hover:bg-orange-100 transition-colors shadow-sm"
+                      >
                         Ver Registro de Actividad
                       </button>
                     </div>
@@ -270,9 +277,16 @@ export function SettingsConfig() {
                     <div className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-xl border border-neutral-100">
                       <div>
                         <p className="text-sm font-bold text-gray-900">Respaldos Automáticos</p>
-                        <p className="text-xs text-neutral-500">Último respaldo: Hoy a las 03:00 AM</p>
+                        <p className="text-xs text-neutral-500">Último respaldo: {lastBackup}</p>
                       </div>
-                      <button className="text-sm font-bold text-[#2B74FF] hover:text-blue-700">Respaldar Ahora</button>
+                      <button 
+                        onClick={handleBackup}
+                        disabled={isBackingUp}
+                        className="text-sm font-bold text-[#2B74FF] hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {isBackingUp ? <div className="w-4 h-4 border-2 border-[#2B74FF] border-t-transparent rounded-full animate-spin"></div> : <HardDriveDownload className="w-4 h-4" />}
+                        {isBackingUp ? 'Respaldando...' : 'Respaldar Ahora'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -282,6 +296,56 @@ export function SettingsConfig() {
           </div>
         </div>
       </div>
+
+      {/* Activity Log Modal */}
+      {isActivityModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" onClick={() => setIsActivityModalOpen(false)}></div>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            
+            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between shrink-0 bg-[#F8FAFC]">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Registro de Actividad</h2>
+                  <p className="text-xs font-medium text-neutral-500">Auditoría de Administradores y Bibliotecarios</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsActivityModalOpen(false)}
+                className="p-2 text-neutral-400 hover:bg-neutral-200 hover:text-gray-900 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-0">
+              <div className="divide-y divide-neutral-100">
+                {logs.length === 0 ? (
+                  <div className="p-8 text-center text-neutral-400">No hay registros de actividad recientes.</div>
+                ) : logs.map((log) => (
+                  <div key={log.id_auditoria} className="p-6 hover:bg-[#F8FAFC]/50 transition-colors flex items-start gap-4">
+                    <div className="w-2 h-2 rounded-full mt-2 shrink-0 bg-[#2B74FF]"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-gray-900 mb-0.5">{log.accion}</p>
+                      <p className="text-xs text-neutral-500 font-medium mb-2">Realizado por: <span className="text-gray-700">{log.nombre} ({log.username})</span></p>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-neutral-400">{new Date(log.fecha).toLocaleString('es-ES')}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
+                          {log.tipo}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </>
   );
 }

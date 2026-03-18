@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
   Search, Plus, Calendar, User as UserIcon, BookOpen, CheckCircle2, X, AlertTriangle, Clock, CalendarCheck
 } from 'lucide-react';
@@ -7,11 +8,11 @@ import { NotificationBell } from './NotificationBell';
 import { useAuth } from '../context/AuthContext';
 import { useBooks } from '../context/BookContext';
 import { useLoans, Loan } from '../context/LoanContext';
-
-const FINE_PER_DAY = 10;
+import { useSettings } from '../context/SettingsContext';
 
 export function LoansAndReturns() {
   const { user: currentUser, users } = useAuth();
+  const { settings } = useSettings();
   const { books, updateBook } = useBooks();
   const { loans, addLoan, updateLoan } = useLoans();
   
@@ -85,7 +86,7 @@ export function LoansAndReturns() {
         label: `Vencido hace ${daysOverdue} ${daysOverdue === 1 ? 'día' : 'días'}`,
         type: 'overdue' as const,
         color: 'bg-red-100 text-red-700',
-        fine: daysOverdue * FINE_PER_DAY
+        fine: daysOverdue * settings.dailyFineAmount
       };
     } else if (daysOverdue === 0) {
       return {
@@ -108,7 +109,7 @@ export function LoansAndReturns() {
       userId: '',
       bookId: 0,
       borrowDate: new Date().toISOString().split('T')[0],
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + settings.maxLoanDaysStudent * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     });
     setIsModalOpen(true);
   };
@@ -179,17 +180,7 @@ export function LoansAndReturns() {
         <div className="flex items-center gap-6">
           <NotificationBell />
           <div className="w-px h-8 bg-neutral-200"></div>
-          <div className="flex items-center gap-3 cursor-pointer group">
-            <div className="text-right hidden sm:block">
-              <p className="font-semibold text-sm text-gray-900 group-hover:text-[#2B74FF] transition-colors">{currentUser?.name}</p>
-              <p className="text-neutral-400 text-xs font-medium">{currentUser?.role}</p>
-            </div>
-            <ImageWithFallback 
-              src={currentUser?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150"} 
-              alt="Profile" 
-              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
-            />
-          </div>
+          <UserProfileDropdown />
         </div>
       </header>
 
@@ -381,7 +372,16 @@ export function LoansAndReturns() {
                 <select 
                   required
                   value={formData.userId}
-                  onChange={e => setFormData({...formData, userId: e.target.value})}
+                  onChange={e => {
+                    const uid = e.target.value;
+                    const u = users.find(usr => usr.id === uid);
+                    const days = (u?.role === 'Profesor' || u?.role === 'Administrador') ? settings.maxLoanDaysProf : settings.maxLoanDaysStudent;
+                    setFormData({
+                      ...formData, 
+                      userId: uid,
+                      dueDate: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                    });
+                  }}
                   className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
                 >
                   <option value="">Seleccionar usuario</option>

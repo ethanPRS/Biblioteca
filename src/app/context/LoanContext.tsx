@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export interface Loan {
   id: string;
@@ -8,39 +8,87 @@ export interface Loan {
   dueDate: string;
   status: 'Activo' | 'Devuelto' | 'Vencido';
   finePaid?: boolean;
+  loanCopyId?: number;
 }
 
-const INITIAL_LOANS: Loan[] = [
-  // Préstamos Activos sin multa
-  { id: 'l1', bookId: 2, userId: '3', borrowDate: '2026-03-01', dueDate: '2026-03-15', status: 'Activo' },
-  { id: 'l2', bookId: 7, userId: '4', borrowDate: '2026-03-02', dueDate: '2026-03-16', status: 'Activo' },
-  
-  // Préstamos Vencidos (con multas)
-  { id: 'l3', bookId: 5, userId: '3', borrowDate: '2026-02-01', dueDate: '2026-02-15', status: 'Activo', finePaid: false }, // Carlos Pérez (A002) - 19 días de retraso
-  { id: 'l4', bookId: 1, userId: '4', borrowDate: '2026-02-15', dueDate: '2026-03-01', status: 'Activo', finePaid: false }, // Ana Gómez (P001) - 5 días de retraso
-];
+const API_URL = 'http://localhost:5001/api/loans';
 
 interface LoanContextType {
   loans: Loan[];
-  addLoan: (loan: Omit<Loan, 'id'>) => void;
-  updateLoan: (id: string, loan: Partial<Loan>) => void;
+  isLoading: boolean;
+  addLoan: (loan: Omit<Loan, 'id'>) => Promise<void>;
+  updateLoan: (id: string, loan: Partial<Loan>) => Promise<void>;
+  deleteLoan: (id: string) => Promise<void>;
 }
 
 const LoanContext = createContext<LoanContextType | null>(null);
 
 export function LoanProvider({ children }: { children: React.ReactNode }) {
-  const [loans, setLoans] = useState<Loan[]>(INITIAL_LOANS);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const addLoan = (newLoan: Omit<Loan, 'id'>) => {
-    setLoans([{ ...newLoan, id: Date.now().toString() }, ...loans]);
+  useEffect(() => {
+    fetchLoans();
+  }, []);
+
+  const fetchLoans = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(API_URL);
+      if (res.ok) {
+        const data = await res.json();
+        setLoans(data);
+      }
+    } catch (error) {
+      console.error('Error fetching loans:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const updateLoan = (id: string, updatedLoan: Partial<Loan>) => {
-    setLoans(loans.map(l => l.id === id ? { ...l, ...updatedLoan } : l));
+  const addLoan = async (newLoan: Omit<Loan, 'id'>) => {
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newLoan)
+      });
+      if (res.ok) {
+        await fetchLoans();
+      }
+    } catch (error) {
+      console.error('Error adding loan:', error);
+    }
+  };
+
+  const updateLoan = async (id: string, updatedLoan: Partial<Loan>) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedLoan)
+      });
+      if (res.ok) {
+        await fetchLoans();
+      }
+    } catch (error) {
+      console.error('Error updating loan:', error);
+    }
+  };
+
+  const deleteLoan = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setLoans(prev => prev.filter(l => l.id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting loan:', error);
+    }
   };
 
   return (
-    <LoanContext.Provider value={{ loans, addLoan, updateLoan }}>
+    <LoanContext.Provider value={{ loans, isLoading, addLoan, updateLoan, deleteLoan }}>
       {children}
     </LoanContext.Provider>
   );

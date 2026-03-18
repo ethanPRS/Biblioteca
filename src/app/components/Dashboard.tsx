@@ -1,4 +1,5 @@
 import React from 'react';
+import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
   Bell, BookOpen, Users, AlertTriangle, ArrowRightLeft, 
   TrendingUp, Clock, DollarSign
@@ -7,6 +8,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useAuth } from '../context/AuthContext';
 import { useBooks } from '../context/BookContext';
 import { useLoans } from '../context/LoanContext';
+import { useSettings } from '../context/SettingsContext';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   LineChart, Line
@@ -15,6 +17,7 @@ import { NotificationBell } from './NotificationBell';
 
 export function Dashboard() {
   const { user: currentUser, users } = useAuth();
+  const { settings } = useSettings();
   const { books } = useBooks();
   const { loans } = useLoans();
 
@@ -44,7 +47,7 @@ export function Dashboard() {
     const diffTime = today.getTime() - dueDate.getTime();
     if (diffTime > 0) {
       const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      totalFinesCollected += daysOverdue * 10; // $10 por día
+      totalFinesCollected += daysOverdue * settings.dailyFineAmount;
     }
   });
 
@@ -70,17 +73,7 @@ export function Dashboard() {
         <div className="flex items-center gap-6">
           <NotificationBell />
           <div className="w-px h-8 bg-neutral-200"></div>
-          <div className="flex items-center gap-3 cursor-pointer group">
-            <div className="text-right hidden sm:block">
-              <p className="font-semibold text-sm text-gray-900 group-hover:text-[#2B74FF] transition-colors">{currentUser?.name}</p>
-              <p className="text-neutral-400 text-xs font-medium">{currentUser?.role}</p>
-            </div>
-            <ImageWithFallback 
-              src={currentUser?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150"} 
-              alt="Profile" 
-              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
-            />
-          </div>
+          <UserProfileDropdown />
         </div>
       </header>
 

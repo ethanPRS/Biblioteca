@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
+import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
   Search, Bell, SlidersHorizontal, MapPin, BookOpen, X, Calendar, User as UserIcon, CheckCircle2, AlertCircle, LayoutGrid, List
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useAuth } from '../context/AuthContext';
-import { useBooks, CATEGORIES, Book } from '../context/BookContext';
+import { useBooks, Book } from '../context/BookContext';
 import { useLoans } from '../context/LoanContext';
 import { useLoanRequests } from '../context/LoanRequestContext';
+import { useSettings } from '../context/SettingsContext';
 import { NotificationBell } from './NotificationBell';
 import { toast } from 'sonner';
 
@@ -21,7 +23,11 @@ export function Catalog() {
   const { books, updateBook } = useBooks();
   const { loans, addLoan } = useLoans();
   const { loanRequests, addLoanRequest } = useLoanRequests();
+  const { settings } = useSettings();
   const navigate = useNavigate();
+
+  // Dynamically compute categories so there are no empty tabs!
+  const DYNAMIC_CATEGORIES = ['Todos', ...Array.from(new Set(books.map(b => b.category).filter(Boolean))).sort()];
 
   const filteredBooks = books.filter(book => {
     const matchesCategory = activeCategory === 'Todos' || book.category === activeCategory;
@@ -34,11 +40,21 @@ export function Catalog() {
     if (!user || !selectedBook || selectedBook.availableCopies <= 0 || isMyLoan) return;
 
     const isAdmin = user.role === 'Administrador' || user.role === 'Bibliotecario';
+    
+    // Check max books limit
+    const maxBooks = user.role === 'Profesor' ? settings.maxBooksProf : settings.maxBooksStudent;
+    const myActiveCount = loans.filter(l => l.userId === user.id && l.status === 'Activo').length;
+    
+    if (myActiveCount >= maxBooks && !isAdmin) {
+      toast.error('Límite alcanzado', { description: `No puedes solicitar más de ${maxBooks} préstamos simultáneos.` });
+      return;
+    }
 
     if (isAdmin) {
       // Admin/Bibliotecario crea el préstamo directamente
+      const loanDays = user.role === 'Profesor' || user.role === 'Administrador' ? settings.maxLoanDaysProf : settings.maxLoanDaysStudent;
       const borrowDate = new Date().toISOString().split('T')[0];
-      const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const dueDate = new Date(Date.now() + loanDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
       addLoan({
         userId: user.id,
@@ -101,17 +117,7 @@ export function Catalog() {
         <div className="flex items-center gap-6">
           <NotificationBell />
           <div className="w-px h-8 bg-neutral-200"></div>
-          <div className="flex items-center gap-3 cursor-pointer group">
-            <div className="text-right hidden sm:block">
-              <p className="font-semibold text-sm text-gray-900 group-hover:text-[#2B74FF] transition-colors">{user?.name}</p>
-              <p className="text-neutral-400 text-xs font-medium">{user?.role}</p>
-            </div>
-            <ImageWithFallback 
-              src={user?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150"} 
-              alt="Profile" 
-              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
-            />
-          </div>
+          <UserProfileDropdown />
         </div>
       </header>
 
@@ -145,23 +151,21 @@ export function Catalog() {
             )}
           </div>
 
-          <div className="flex items-center gap-3 mb-8 overflow-x-auto pb-2 scrollbar-hide">
-            {['Todos', ...CATEGORIES].map((category) => {
-              const isActive = activeCategory === category;
-              return (
-                <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={`px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all border
-                    ${isActive 
-                      ? 'bg-[#2B74FF] text-white border-[#2B74FF] shadow-sm shadow-[#2B74FF]/20' 
-                      : 'bg-white text-neutral-500 border-neutral-200 hover:bg-[#B5DBF7]/20 hover:text-[#2B74FF] hover:border-[#B5DBF7]'
-                    }`}
-                >
-                  {category}
-                </button>
-              )
-            })}
+          {/* Category Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide">
+            {DYNAMIC_CATEGORIES.map(category => (
+              <button
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  activeCategory === category 
+                    ? 'bg-neutral-900 text-white shadow-md' 
+                    : 'bg-white text-neutral-500 border border-neutral-200 hover:border-neutral-300 hover:text-gray-900'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
           </div>
 
           {filteredBooks.length > 0 ? (

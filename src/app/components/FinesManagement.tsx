@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
   Search, Bell, AlertTriangle, CheckCircle, CreditCard, DollarSign, Wallet
 } from 'lucide-react';
@@ -7,11 +8,11 @@ import { NotificationBell } from './NotificationBell';
 import { useAuth } from '../context/AuthContext';
 import { useBooks } from '../context/BookContext';
 import { useLoans, Loan } from '../context/LoanContext';
-
-const FINE_PER_DAY = 10; // $10 por cada día de retraso
+import { useSettings } from '../context/SettingsContext';
 
 export function FinesManagement() {
   const { user: currentUser, users } = useAuth();
+  const { settings } = useSettings();
   const { books } = useBooks();
   const { loans, updateLoan } = useLoans();
   
@@ -57,7 +58,7 @@ export function FinesManagement() {
     const diffTime = todayDate.getTime() - dueDate.getTime();
     const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    const amount = daysOverdue * FINE_PER_DAY;
+    const amount = daysOverdue * settings.dailyFineAmount;
     const isPaid = loan.finePaid === true;
 
     if (!isPaid) {
@@ -97,17 +98,7 @@ export function FinesManagement() {
         <div className="flex items-center gap-6">
           <NotificationBell />
           <div className="w-px h-8 bg-neutral-200"></div>
-          <div className="flex items-center gap-3 cursor-pointer group">
-            <div className="text-right hidden sm:block">
-              <p className="font-semibold text-sm text-gray-900 group-hover:text-[#2B74FF] transition-colors">{currentUser?.name}</p>
-              <p className="text-neutral-400 text-xs font-medium">{currentUser?.role}</p>
-            </div>
-            <ImageWithFallback 
-              src={currentUser?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150"} 
-              alt="Profile" 
-              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
-            />
-          </div>
+          <UserProfileDropdown />
         </div>
       </header>
 
