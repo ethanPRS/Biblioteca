@@ -8,6 +8,7 @@ import usersRouter from './routes/users.js';
 import loansRouter from './routes/loans.js';
 import finesRouter from './routes/fines.js';
 import auditRouter from './routes/audit.js';
+import chatRouter from './routes/chat.js';
 import db from './db/database.js'; // Ensures the database initializes on startup
 
 dotenv.config();
@@ -28,6 +29,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/loans', loansRouter);
 app.use('/api/fines', finesRouter);
 app.use('/api/audit', auditRouter);
+app.use('/api/chat', chatRouter);
 
 // Backup endpoint
 app.post('/api/backup', (req, res) => {

@@ -10,6 +10,7 @@ import { useAuth, Screen } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { Toaster } from 'sonner';
 import { HelpModal } from './HelpModal';
+import { ChatWidget } from './ChatWidget';
 
 const NAV_ITEMS: Array<{ icon: any; label: string; path: string; screenId: Screen }> = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/inicio', screenId: 'inicio' },
@@ -111,6 +112,9 @@ export function RootLayout() {
 
       {/* Help Modal */}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+
+      {/* Floating Chat Widget */}
+      <ChatWidget />
 
     </div>
   );
