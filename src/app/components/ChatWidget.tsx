@@ -65,7 +65,7 @@ export function ChatWidget() {
       name: user.name,
       role: user.role,
       activeLoans,
-      pendingFines: \`$\${pendingFines.toFixed(2)} MXN\`
+      pendingFines: `$${pendingFines.toFixed(2)} MXN`
     };
   };
 
