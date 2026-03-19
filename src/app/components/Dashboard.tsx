@@ -1,4 +1,5 @@
 import React from 'react';
+import { Navigate } from 'react-router';
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
   Bell, BookOpen, Users, AlertTriangle, ArrowRightLeft, 
@@ -16,10 +17,14 @@ import {
 import { NotificationBell } from './NotificationBell';
 
 export function Dashboard() {
-  const { user: currentUser, users } = useAuth();
+  const { user: currentUser, users, getUserPermissions } = useAuth();
   const { settings } = useSettings();
   const { books } = useBooks();
   const { loans } = useLoans();
+
+  if (currentUser && !getUserPermissions(currentUser.role).includes('inicio')) {
+    return <Navigate to="/" replace />;
+  }
 
   // Calcular estadísticas
   const totalBooks = books.reduce((acc, book) => acc + (book.totalCopies || 1), 0);

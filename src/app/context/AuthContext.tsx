@@ -32,9 +32,9 @@ export type RolePermissions = Record<Role, Screen[]>;
 const INITIAL_ROLE_PERMISSIONS: RolePermissions = {
   'Administrador': ['inicio', 'catalogo', 'prestamos', 'solicitudes', 'multas', 'gestion-libros', 'gestion-usuarios', 'config'],
   'Bibliotecario': ['inicio', 'catalogo', 'prestamos', 'solicitudes', 'multas', 'gestion-libros', 'config'],
-  'Profesor': ['inicio', 'catalogo', 'solicitudes', 'multas'],
-  'Alumno': ['inicio', 'catalogo', 'solicitudes'],
-  'Colaborador': ['inicio', 'catalogo', 'solicitudes']
+  'Profesor': ['catalogo', 'solicitudes', 'multas'],
+  'Alumno': ['catalogo', 'solicitudes', 'multas'],
+  'Colaborador': ['catalogo', 'solicitudes']
 };
 
 export interface User {
