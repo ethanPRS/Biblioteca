@@ -34,7 +34,6 @@ router.get('/', (req, res) => {
         L.editorial_clave as editorial,
         L.edicion as edition,
         L.precio as price,
-        L.costo_multa_base as finePerDay,
         L.sinopsis as synopsis,
         L.formato as format,
         L.estatus_catalogo as availabilityStatus,
@@ -56,8 +55,8 @@ router.post('/', (req, res) => {
   try {
     db.transaction(() => {
       const insert = db.prepare(`
-        INSERT INTO LIBRO (titulo, autor, editorial_clave, edicion, precio, sinopsis, formato, estatus_catalogo, isbn, foto, costo_multa_base)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO LIBRO (titulo, autor, editorial_clave, edicion, precio, sinopsis, formato, estatus_catalogo, isbn, foto)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       const result = insert.run(
@@ -70,8 +69,7 @@ router.post('/', (req, res) => {
         b.format || 'Físico', 
         b.availabilityStatus || 'Disponible para préstamo a casa', 
         b.isbn || '', 
-        b.cover || '', 
-        b.finePerDay || 10
+        b.cover || ''
       );
       
       const bookId = result.lastInsertRowid;
@@ -108,14 +106,14 @@ router.put('/:id', (req, res) => {
         UPDATE LIBRO SET 
           titulo = ?, autor = ?, editorial_clave = ?, edicion = ?, 
           precio = ?, sinopsis = ?, formato = ?, estatus_catalogo = ?, 
-          isbn = ?, foto = ?, costo_multa_base = ?
+          isbn = ?, foto = ?
         WHERE id_libro = ?
       `);
 
       update.run(
         b.title, b.author, b.editorial, b.edition, 
         b.price, b.synopsis, b.format, b.availabilityStatus, 
-        b.isbn, b.cover, b.finePerDay, id
+        b.isbn, b.cover, id
       );
 
       // Manage Ubicacion

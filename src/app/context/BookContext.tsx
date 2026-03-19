@@ -14,7 +14,6 @@ export interface Book {
   editorial: string;
   edition: string;
   price: number;
-  finePerDay: number;
   synopsis: string;
   format: 'Físico' | 'Digital' | 'Ambos';
   physicalCopies?: number; // Solo para libros físicos o ambos

@@ -34,7 +34,6 @@ export function BookManagement() {
     editorial: '',
     edition: '',
     price: 0,
-    finePerDay: 10,
     synopsis: '',
     format: 'Físico',
     physicalCopies: 1,
@@ -72,7 +71,6 @@ export function BookManagement() {
       editorial: book.editorial,
       edition: book.edition,
       price: book.price,
-      finePerDay: book.finePerDay,
       synopsis: book.synopsis,
       format: book.format,
       physicalCopies: book.physicalCopies,
@@ -605,17 +603,6 @@ export function BookManagement() {
                     />
                   </div>
 
-                  {/* Multa por Día */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-900 block">Multa por Día</label>
-                    <input 
-                      type="number" 
-                      value={formData.finePerDay}
-                      onChange={e => setFormData({...formData, finePerDay: parseInt(e.target.value) || 10})}
-                      className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
-                    />
-                  </div>
-
                   {/* Sinopsis */}
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-semibold text-gray-900 block">Sinopsis</label>
@@ -846,13 +833,6 @@ export function BookManagement() {
                   <p className="text-sm font-bold text-gray-900">{selectedBook.availabilityStatus}</p>
                 </div>
 
-                {/* Fine Info */}
-                {selectedBook.finePerDay > 0 && (
-                  <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                    <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-2">Multa por Día de Retraso</p>
-                    <p className="text-sm font-bold text-gray-900">${selectedBook.finePerDay} MXN</p>
-                  </div>
-                )}
               </div>
               
             </div>
