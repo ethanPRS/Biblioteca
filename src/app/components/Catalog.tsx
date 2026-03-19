@@ -305,10 +305,13 @@ export function Catalog() {
             </div>
 
             {/* Right: Details & Actions */}
-            <div className="w-full md:w-3/5 p-8 md:p-10 flex flex-col overflow-y-auto bg-white">
+            <div className="w-full md:w-3/5 flex-1 flex flex-col min-h-0 bg-white relative">
               
-              <div className="mb-6">
-                <div className="flex items-center gap-3 mb-4 flex-wrap">
+              {/* Contenido scrolleable */}
+              <div className="flex-1 overflow-y-auto p-6 md:p-10 pb-8">
+              
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-4 flex-wrap">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#B5DBF7]/30 text-[#2B74FF]">
                     {selectedBook.category}
                   </span>
@@ -436,8 +439,11 @@ export function Catalog() {
                   </div>
                 )}
               </div>
+              
+              </div> {/* <-- Cierra el área de overflow-y-auto */}
 
-              <div className="mt-auto pt-6 border-t border-neutral-100">
+              {/* Botón Estático al fondo */}
+              <div className="px-6 md:px-10 py-5 bg-white border-t border-neutral-100 shrink-0 z-10 w-full shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.03)] mt-auto">
                 {isMyLoan ? (
                   <button 
                     disabled
