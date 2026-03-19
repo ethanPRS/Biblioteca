@@ -371,10 +371,10 @@ export function Catalog() {
                 </div>
 
                 {/* Fine Info */}
-                {selectedBook.finePerDay > 0 && (
+                {settings.dailyFineAmount > 0 && (
                   <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
                     <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-2">Multa por Día de Retraso</p>
-                    <p className="text-sm font-bold text-gray-900">${selectedBook.finePerDay} MXN</p>
+                    <p className="text-sm font-bold text-gray-900">${settings.dailyFineAmount} MXN</p>
                   </div>
                 )}
 

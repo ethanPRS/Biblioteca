@@ -8,12 +8,14 @@ import { NotificationBell } from './NotificationBell';
 import { useAuth, ROLES, User, Role, SCREENS, Screen } from '../context/AuthContext';
 import { useLoans } from '../context/LoanContext';
 import { useBooks } from '../context/BookContext';
+import { useSettings } from '../context/SettingsContext';
 import { toast } from 'sonner';
 
 export function UserManagement() {
   const { user: currentUser, users, addUser, updateUser, deleteUser, rolePermissions, updateRolePermissions } = useAuth();
   const { loans } = useLoans();
   const { books } = useBooks();
+  const { settings } = useSettings();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -600,7 +602,7 @@ export function UserManagement() {
           if (book) {
             const dueDate = new Date(loan.dueDate);
             const daysLate = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-            const fineAmount = daysLate * book.finePerDay;
+            const fineAmount = daysLate * settings.dailyFineAmount;
             totalFines += fineAmount;
           }
         });
@@ -688,7 +690,7 @@ export function UserManagement() {
                           
                           const dueDate = new Date(loan.dueDate);
                           const daysLate = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-                          const fineAmount = daysLate * book.finePerDay;
+                          const fineAmount = daysLate * settings.dailyFineAmount;
                           
                           return (
                             <div key={loan.id} className="bg-white rounded-lg p-3 border border-red-100">
@@ -699,7 +701,7 @@ export function UserManagement() {
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-bold text-red-600">${fineAmount}</p>
-                                  <p className="text-xs text-neutral-400">${book.finePerDay}/día</p>
+                                  <p className="text-xs text-neutral-400">${settings.dailyFineAmount}/día</p>
                                 </div>
                               </div>
                             </div>
