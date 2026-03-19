@@ -375,8 +375,19 @@ export function UserManagement() {
                       value={formData.username}
                       onChange={e => setFormData({...formData, username: e.target.value.toUpperCase()})}
                       placeholder="Ej. A01234567"
-                      className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all uppercase"
+                      disabled={!!editingId}
+                      className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all uppercase ${
+                        editingId 
+                          ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
+                          : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
+                      }`}
                     />
+                    {editingId && (
+                      <p className="text-xs text-neutral-400 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        No se puede editar la matrícula después del alta
+                      </p>
+                    )}
                   </div>
 
                   {/* Rol */}

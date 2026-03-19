@@ -514,37 +514,29 @@ export function BookManagement() {
 
                   {/* Copias Totales */}
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-900 block">Copias Totales</label>
+                    <label className="text-sm font-semibold text-gray-900 block">Cantidad de Copias Totales</label>
                     <input 
                       required
                       type="number" 
                       min="1"
                       value={formData.totalCopies}
-                      onChange={e => setFormData({...formData, totalCopies: parseInt(e.target.value) || 1})}
+                      onChange={e => setFormData({...formData, totalCopies: Math.max(1, parseInt(e.target.value) || 1)})}
                       className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
                     />
                   </div>
 
-                  {/* Copias Disponibles */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-900 block">Copias Disponibles</label>
-                    <input 
-                      required
-                      type="number" 
-                      min="0"
-                      max={formData.totalCopies}
-                      value={formData.availableCopies}
-                      onChange={e => {
-                        const val = parseInt(e.target.value) || 0;
-                        setFormData({
-                          ...formData, 
-                          availableCopies: val,
-                          status: val === 0 ? 'Prestado' : 'Disponible'
-                        });
-                      }}
-                      className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
-                    />
-                  </div>
+                  {/* Copias Disponibles (Sólo lectura) */}
+                  {editingId && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-900 block">Copias Disponibles</label>
+                      <input 
+                        type="number" 
+                        value={formData.availableCopies}
+                        disabled
+                        className="w-full bg-neutral-100 text-neutral-500 border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium cursor-not-allowed"
+                      />
+                    </div>
+                  )}
 
                   {/* URL de Portada */}
                   <div className="space-y-2 md:col-span-2">
@@ -647,20 +639,6 @@ export function BookManagement() {
                       <option value="Ambos">Ambos</option>
                     </select>
                   </div>
-
-                  {/* Copias Físicas (solo si es Físico o Ambos) */}
-                  {(formData.format === 'Físico' || formData.format === 'Ambos') && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-900 block">Cantidad de Copias Físicas</label>
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={formData.physicalCopies || 0}
-                        onChange={e => setFormData({...formData, physicalCopies: parseInt(e.target.value) || 0})}
-                        className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
-                      />
-                    </div>
-                  )}
 
                   {/* URL del PDF (solo si es Digital o Ambos) */}
                   {(formData.format === 'Digital' || formData.format === 'Ambos') && (
