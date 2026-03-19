@@ -16,9 +16,8 @@ router.post('/', async (req, res) => {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // We use gemini-1.5-flash as it's the recommended model for text chat
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // We use gemini-2.5-flash as the user's key supports it natively
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Build the system prompt using the metadata passed from the frontend
     const systemPrompt = `
