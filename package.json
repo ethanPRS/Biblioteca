@@ -7,7 +7,8 @@
     "dev": "concurrently \"vite\" \"nodemon server/index.js\"",
     "dev:frontend": "vite",
     "build": "vite build",
-    "server": "nodemon server/index.js"
+    "server": "nodemon server/index.js",
+    "postinstall": "npm rebuild better-sqlite3"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
