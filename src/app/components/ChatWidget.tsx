@@ -138,7 +138,7 @@ export function ChatWidget() {
       
       {/* Chat Window */}
       {isOpen && (
-        <div className="mb-4 w-96 h-[500px] max-h-[80vh] bg-white rounded-2xl shadow-2xl border border-neutral-100 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 origin-bottom-right">
+        <div className="mb-4 w-[calc(100vw-3rem)] sm:w-96 h-[500px] max-h-[80vh] bg-white rounded-2xl shadow-2xl border border-neutral-100 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 origin-bottom-right">
           
           {/* Header */}
           <div className="bg-[#2B74FF] text-white p-4 flex items-center justify-between shrink-0">

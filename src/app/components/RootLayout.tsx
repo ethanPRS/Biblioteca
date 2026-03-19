@@ -12,14 +12,14 @@ import { Toaster } from 'sonner';
 import { HelpModal } from './HelpModal';
 import { ChatWidget } from './ChatWidget';
 
-const NAV_ITEMS: Array<{ icon: any; label: string; path: string; screenId: Screen }> = [
+const NAV_ITEMS: Array<{ icon: any; label: string; path: string; screenId: Screen, desktopOnly?: boolean }> = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/inicio', screenId: 'inicio' },
   { icon: BookOpen, label: 'Catálogo', path: '/', screenId: 'catalogo' },
   { icon: ArrowRightLeft, label: 'Préstamos', path: '/prestamos', screenId: 'prestamos' },
   { icon: Send, label: 'Solicitudes', path: '/solicitudes', screenId: 'solicitudes' },
   { icon: AlertCircle, label: 'Multas', path: '/multas', screenId: 'multas' },
-  { icon: BookText, label: 'Gestión de Libros', path: '/gestion-libros', screenId: 'gestion-libros' },
-  { icon: Users, label: 'Gestión de Usuarios', path: '/gestion-usuarios', screenId: 'gestion-usuarios' },
+  { icon: BookText, label: 'Gestión de Libros', path: '/gestion-libros', screenId: 'gestion-libros', desktopOnly: true },
+  { icon: Users, label: 'Gestión de Usuarios', path: '/gestion-usuarios', screenId: 'gestion-usuarios', desktopOnly: true },
   { icon: Settings, label: 'Configuración', path: '/config', screenId: 'config' },
 ];
 
@@ -97,6 +97,7 @@ export function RootLayout() {
                 to={item.path}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm
+                  ${item.desktopOnly ? 'hidden lg:flex' : ''}
                   ${isActive 
                     ? 'bg-[#2B74FF] text-white shadow-md shadow-[#2B74FF]/20' 
                     : 'text-neutral-500 hover:bg-[#B5DBF7]/20 hover:text-[#2B74FF]'
