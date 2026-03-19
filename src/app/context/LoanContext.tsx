@@ -11,7 +11,7 @@ export interface Loan {
   loanCopyId?: number;
 }
 
-const API_URL = `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || "http://localhost:5001"}`}/api/loans`;
+const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/loans`;
 
 interface LoanContextType {
   loans: Loan[];

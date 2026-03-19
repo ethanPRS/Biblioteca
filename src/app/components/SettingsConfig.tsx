@@ -26,7 +26,7 @@ export function SettingsConfig() {
     setIsBackingUp(true);
     toast.info("Iniciando respaldo de la base de datos...");
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || "http://localhost:5001"}`}/api/backup`, { method: 'POST' });
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/backup`, { method: 'POST' });
       if (res.ok) {
         setLastBackup('Hoy a las ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
         toast.success("Base de datos respaldada correctamente", { description: "El archivo .db se ha guardado en server/db/backups/" });
