@@ -70,7 +70,7 @@ export function Dashboard() {
   return (
     <>
       {/* Topbar */}
-      <header className="h-20 bg-white border-b border-neutral-100 flex items-center justify-between px-8 shrink-0 shadow-sm z-10 relative">
+      <header className="h-20 bg-white border-b border-neutral-100 flex items-center justify-between px-8 shrink-0 shadow-sm z-50 relative">
         <div>
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">Dashboard General</h2>
         </div>
