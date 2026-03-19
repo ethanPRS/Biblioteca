@@ -48,7 +48,7 @@ export interface User {
   funcion?: string;
 }
 
-const API_URL = 'http://localhost:5001/api/users';
+const API_URL = `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || "http://localhost:5001"}`}/api/users`;
 
 interface AuthContextType {
   user: User | null;

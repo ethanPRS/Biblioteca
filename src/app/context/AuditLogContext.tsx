@@ -23,7 +23,7 @@ export function AuditLogProvider({ children }: { children: React.ReactNode }) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const { user } = useAuth();
   
-  const API_URL = 'http://localhost:5001/api/audit';
+  const API_URL = `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || "http://localhost:5001"}`}/api/audit`;
 
   const fetchLogs = async () => {
     try {
