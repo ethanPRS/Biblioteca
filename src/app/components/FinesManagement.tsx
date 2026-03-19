@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBooks } from '../context/BookContext';
 import { useLoans, Loan } from '../context/LoanContext';
 import { useSettings } from '../context/SettingsContext';
+import { toast } from 'sonner';
 
 export function FinesManagement() {
   const { user: currentUser, users } = useAuth();
@@ -228,7 +229,13 @@ export function FinesManagement() {
                               </button>
                             ) : (
                               <button 
-                                onClick={() => alert('Dirígete a la biblioteca para realizar el pago de tu multa.')}
+                                onClick={() => {
+                                  toast.info('Instrucciones de Pago', {
+                                    description: `Dirígete físicamente a la biblioteca para saldar tu multa pendiente por la cantidad de $${amount.toFixed(2)} MXN a la brevedad posible.`,
+                                    duration: 5000,
+                                    icon: <CreditCard className="w-5 h-5 text-[#2B74FF]" />
+                                  });
+                                }}
                                 className="inline-flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-900 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
                               >
                                 <CreditCard className="w-3.5 h-3.5" />
