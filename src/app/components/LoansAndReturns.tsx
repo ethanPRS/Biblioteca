@@ -165,33 +165,33 @@ export function LoansAndReturns() {
   return (
     <>
       {/* Topbar */}
-      <header className="h-20 bg-white border-b border-neutral-100 flex items-center justify-between px-8 shrink-0 shadow-sm z-10 relative">
-        <div className="relative w-[480px]">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 w-5 h-5" />
+      <header className="h-16 md:h-20 bg-white border-b border-neutral-100 flex items-center justify-between px-4 pl-[68px] lg:px-8 shrink-0 shadow-sm z-10 relative gap-4">
+        <div className="relative flex-1 max-w-[480px]">
+          <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-neutral-400 w-4 h-4 md:w-5 md:h-5" />
           <input 
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-full py-2.5 pl-12 pr-4 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all placeholder:text-neutral-400" 
+            className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-full py-2 pl-9 pr-3 md:py-2.5 md:pl-12 md:pr-4 text-xs md:text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all placeholder:text-neutral-400" 
             placeholder="Buscar usuario o libro..." 
           />
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 md:gap-6 shrink-0">
           <NotificationBell />
-          <div className="w-px h-8 bg-neutral-200"></div>
+          <div className="w-px h-6 md:h-8 bg-neutral-200"></div>
           <UserProfileDropdown />
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-8 bg-[#F8FAFC]">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#F8FAFC]">
         <div className="max-w-[1400px] mx-auto">
           
-          <div className="flex items-end justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 md:mb-8 gap-4">
             <div>
-              <h1 className="text-[32px] font-bold text-gray-900 tracking-tight">Préstamos y Devoluciones</h1>
-              <p className="text-neutral-400 font-medium mt-1">Gestiona los préstamos activos y el historial de devoluciones</p>
+              <h1 className="text-2xl md:text-[32px] font-bold text-gray-900 tracking-tight">Préstamos y Devoluciones</h1>
+              <p className="text-sm md:text-base text-neutral-400 font-medium mt-1">Gestiona los préstamos activos y el historial de devoluciones</p>
             </div>
             
             {isAdmin && (
@@ -206,7 +206,7 @@ export function LoansAndReturns() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-8">
             <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>

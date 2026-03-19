@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation, Navigate } from 'react-router';
 import { 
   Search, Bell, LayoutDashboard, BookOpen, BookText, 
   Users, Settings, HelpCircle, LogOut, ArrowRightLeft,
-  RotateCcw, AlertCircle, Send
+  RotateCcw, AlertCircle, Send, Menu
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useAuth, Screen } from '../context/AuthContext';
@@ -25,6 +25,7 @@ const NAV_ITEMS: Array<{ icon: any; label: string; path: string; screenId: Scree
 
 export function RootLayout() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { user, logout, getUserPermissions } = useAuth();
   const { settings } = useSettings();
@@ -55,10 +56,30 @@ export function RootLayout() {
   const filteredNav = NAV_ITEMS.filter(item => userPermissions.includes(item.screenId));
 
   return (
-    <div className="flex h-screen w-full bg-[#F8FAFC] font-['Montserrat',_sans-serif] text-neutral-800 overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-screen w-full bg-[#F8FAFC] font-['Montserrat',_sans-serif] text-neutral-800 overflow-hidden relative">
       
+      {/* Floating Hamburger Button for Mobile/Tablet */}
+      <button 
+        onClick={() => setIsMobileMenuOpen(true)}
+        className="lg:hidden fixed top-3 left-4 z-40 p-2.5 text-neutral-600 bg-white border border-neutral-200 shadow-sm hover:bg-neutral-50 rounded-lg transition-colors"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {/* Mobile Drawer Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-neutral-100 flex flex-col h-full shrink-0 shadow-sm z-10">
+      <aside className={`
+        fixed inset-y-0 left-0 z-[60] w-64 bg-white border-r border-neutral-100 flex flex-col h-full shrink-0 shadow-xl transition-transform duration-300
+        lg:static lg:translate-x-0 lg:shadow-sm
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         <div className="h-24 flex items-center justify-center border-b border-neutral-100 px-6 shrink-0">
           <ImageWithFallback 
             src="/logoDucky.jpeg" 
@@ -74,6 +95,7 @@ export function RootLayout() {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={() => setIsMobileMenuOpen(false)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm
                   ${isActive 
                     ? 'bg-[#2B74FF] text-white shadow-md shadow-[#2B74FF]/20' 

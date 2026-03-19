@@ -70,29 +70,29 @@ export function Dashboard() {
   return (
     <>
       {/* Topbar */}
-      <header className="h-20 bg-white border-b border-neutral-100 flex items-center justify-between px-8 shrink-0 shadow-sm z-50 relative">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Dashboard General</h2>
+      <header className="h-16 md:h-20 bg-white border-b border-neutral-100 flex items-center justify-between px-4 pl-[68px] lg:px-8 shrink-0 shadow-sm z-10 relative gap-4">
+        <div className="flex-1">
+          <h2 className="text-lg md:text-xl font-bold text-gray-900 tracking-tight">Dashboard General</h2>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 md:gap-6 shrink-0">
           <NotificationBell />
-          <div className="w-px h-8 bg-neutral-200"></div>
+          <div className="w-px h-6 md:h-8 bg-neutral-200"></div>
           <UserProfileDropdown />
         </div>
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-8 bg-[#F8FAFC]">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#F8FAFC]">
         <div className="max-w-[1400px] mx-auto">
           
-          <div className="mb-8">
-            <h1 className="text-[32px] font-bold text-gray-900 tracking-tight">Bienvenido, {currentUser?.name.split(' ')[0]}</h1>
-            <p className="text-neutral-400 font-medium mt-1">Aquí tienes un resumen de la actividad de la biblioteca hoy.</p>
+          <div className="mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-[32px] font-bold text-gray-900 tracking-tight">Bienvenido, {currentUser?.name.split(' ')[0]}</h1>
+            <p className="text-sm md:text-base text-neutral-400 font-medium mt-1">Aquí tienes un resumen de la actividad de la biblioteca hoy.</p>
           </div>
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
             
             <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm flex items-center justify-between group hover:-translate-y-1 transition-transform">
               <div>

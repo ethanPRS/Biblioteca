@@ -64,25 +64,25 @@ export function SettingsConfig() {
 
   return (
     <>
-      <header className="h-20 bg-white border-b border-neutral-100 flex items-center justify-between px-8 shrink-0 shadow-sm z-10 relative">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Configuración del Sistema</h2>
+      <header className="h-16 md:h-20 bg-white border-b border-neutral-100 flex items-center justify-between px-4 pl-[68px] lg:px-8 shrink-0 shadow-sm z-10 relative gap-4">
+        <div className="flex-1">
+          <h2 className="text-lg md:text-xl font-bold text-gray-900 tracking-tight line-clamp-1">Configuración del Sistema</h2>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 md:gap-6 shrink-0">
           <NotificationBell />
-          <div className="w-px h-8 bg-neutral-200"></div>
+          <div className="w-px h-6 md:h-8 bg-neutral-200"></div>
           <UserProfileDropdown />
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8 bg-[#F8FAFC]">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#F8FAFC]">
         <div className="max-w-[1000px] mx-auto">
           
-          <div className="flex items-end justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 md:mb-8 gap-4">
             <div>
-              <h1 className="text-[32px] font-bold text-gray-900 tracking-tight">Configuración</h1>
-              <p className="text-neutral-400 font-medium mt-1">Ajusta los parámetros operativos de la biblioteca</p>
+              <h1 className="text-2xl md:text-[32px] font-bold text-gray-900 tracking-tight">Configuración</h1>
+              <p className="text-sm md:text-base text-neutral-400 font-medium mt-1">Ajusta los parámetros operativos de la biblioteca</p>
             </div>
             <button 
               onClick={handleSave}
@@ -94,9 +94,22 @@ export function SettingsConfig() {
             </button>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-8">
-            {/* Sidebar Tabs */}
-            <div className="w-full md:w-64 shrink-0 space-y-1">
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+            {/* Mobile Select Options Menu */}
+            <div className="lg:hidden">
+              <select 
+                value={activeTab}
+                onChange={e => setActiveTab(e.target.value)}
+                className="w-full bg-white border border-neutral-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2B74FF]/20"
+              >
+                {tabs.map(tab => (
+                  <option key={tab.id} value={tab.id}>{tab.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Desktop Sidebar Tabs */}
+            <div className="hidden lg:block w-64 shrink-0 space-y-1">
               {tabs.map(tab => {
                 const isActive = activeTab === tab.id;
                 const Icon = tab.icon;
