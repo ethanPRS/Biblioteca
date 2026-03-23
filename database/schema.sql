@@ -98,12 +98,14 @@ CREATE TABLE IF NOT EXISTS ESCOLAR (
     matricula VARCHAR(255) PRIMARY KEY,
     nombre VARCHAR(255),
     carrera VARCHAR(255),
-    estatus VARCHAR(50)
+    estatus VARCHAR(50),
+    correo VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS CAPITAL_HUMANO (
     matricula_nomina VARCHAR(255) PRIMARY KEY,
     nombre VARCHAR(255),
     puesto VARCHAR(255),
-    estatus VARCHAR(50)
+    estatus VARCHAR(50),
+    correo VARCHAR(255)
 );

@@ -74,9 +74,12 @@ INSERT INTO LISTA_ESPERA (id_lista_espera, id_usuario, id_libro, fecha_registro,
 SELECT setval('lista_espera_id_lista_espera_seq', 2);
 
 -- Insertar Datos Simulados de Bases de Datos Externas
-INSERT INTO ESCOLAR (matricula, nombre, carrera, estatus) VALUES
-('614070', 'Lizbeth Berzosa Cervantes', 'Ingeniería', 'Activo'),
-('647144', 'Galia Sejudo Mireles', 'Negocios', 'Activo'),
-('615347', 'Ethan Patricio Rivera Saldivar', 'Ingeniería', 'Activo'),
-('646278', 'Victor Emiliano Berlanga Mendoza', 'Ingeniería', 'Activo'),
-('587823', 'Alejandra Morón Rodríguez', 'Negocios', 'Activo');
+INSERT INTO ESCOLAR (matricula, nombre, carrera, estatus, correo) VALUES
+('614070', 'Lizbeth Berzosa Cervantes', 'Ingeniería', 'Activo', 'lizbeth.berzosa@udem.edu'),
+('647144', 'Galia Sejudo Mireles', 'Negocios', 'Activo', 'galia.sejudo@udem.edu'),
+('615347', 'Ethan Patricio Rivera Saldivar', 'Ingeniería', 'Activo', 'ethan.rivera@udem.edu'),
+('646278', 'Victor Emiliano Berlanga Mendoza', 'Ingeniería', 'Activo', 'victor.berlanga@udem.edu'),
+('587823', 'Alejandra Morón Rodríguez', 'Negocios', 'Activo', 'alejandra.moron@udem.edu');
+
+INSERT INTO CAPITAL_HUMANO (matricula_nomina, nombre, puesto, estatus, correo) VALUES
+('P001', 'Roberto Martínez', 'Profesor Titular', 'Activo', 'roberto.martinez@udem.edu');

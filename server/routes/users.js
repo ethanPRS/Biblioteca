@@ -76,14 +76,14 @@ router.post('/', (req, res) => {
     let computedFuncion = '';
     let foundName = '';
 
-    const escolarRow = db.prepare('SELECT nombre, carrera, estatus FROM ESCOLAR WHERE matricula = ?').get(username);
+    const escolarRow = db.prepare('SELECT nombre, carrera, estatus, correo FROM ESCOLAR WHERE matricula = ?').get(username);
     if (escolarRow) {
       externalUser = escolarRow;
       computedRole = 'Alumno';
       computedFuncion = 'Estudiante';
       foundName = escolarRow.nombre;
     } else {
-      const capitalRow = db.prepare('SELECT nombre, puesto, estatus FROM CAPITAL_HUMANO WHERE matricula_nomina = ?').get(username);
+      const capitalRow = db.prepare('SELECT nombre, puesto, estatus, correo FROM CAPITAL_HUMANO WHERE matricula_nomina = ?').get(username);
       if (capitalRow) {
         externalUser = capitalRow;
         computedRole = capitalRow.puesto.toLowerCase().includes('profesor') ? 'Profesor' : 'Administrador';
@@ -97,7 +97,7 @@ router.post('/', (req, res) => {
     }
 
     const passwordHash = username; // Password equals matricula
-    const email = `${username.toLowerCase()}@tec.mx`;
+    const email = externalUser.correo || `${username.toLowerCase()}@udem.edu`;
 
     const result = db.prepare(`
       INSERT INTO USUARIO (matricula_nomina, rol, funcion, contrasena_hash, estatus, nombre, email, avatar)
