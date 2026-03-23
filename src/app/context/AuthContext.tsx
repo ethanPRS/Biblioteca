@@ -46,6 +46,7 @@ export interface User {
   avatar: string;
   status?: string;
   funcion?: string;
+  passwordHash?: string;
 }
 
 const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/users`;
@@ -57,7 +58,7 @@ interface AuthContextType {
   rolePermissions: RolePermissions;
   login: (username: string, pass: string) => Promise<boolean>;
   logout: () => void;
-  addUser: (user: Omit<User, 'id'>) => Promise<void>;
+  addUser: (user: Partial<User>) => Promise<{success: boolean, message?: string}>;
   updateUser: (id: string, user: Partial<User>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   updateRolePermissions: (role: Role, permissions: Screen[]) => void;
@@ -112,18 +113,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => setUser(null);
 
-  const addUser = async (newUser: Omit<User, 'id'>) => {
+  const addUser = async (newUser: Partial<User>) => {
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUser)
       });
+      const data = await res.json();
       if (res.ok) {
         await fetchUsers();
+        return { success: true, message: `El usuario ${data.name} ha sido dado de alta exitosamente.` };
+      } else {
+        return { success: false, message: data.error || 'Error al agregar usuario' };
       }
     } catch (error) {
       console.error('Error adding user:', error);
+      return { success: false, message: 'Error de red al agregar usuario' };
     }
   };
 

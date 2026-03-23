@@ -57,22 +57,63 @@ router.get('/:id', (req, res) => {
 
 // POST create user
 router.post('/', (req, res) => {
-  const { username, role, name, email, avatar, status, funcion, passwordHash } = req.body;
+  const { username } = req.body;
+  
+  if (!username) {
+    return res.status(400).json({ error: 'La matrícula o nómina es requerida.' });
+  }
+
   try {
+    // Check if user already exists in USUARIO
+    const existing = db.prepare('SELECT id_usuario FROM USUARIO WHERE matricula_nomina = ?').get(username);
+    if (existing) {
+      return res.status(400).json({ error: 'El usuario ya está registrado en el sistema.' });
+    }
+
+    // Lookup in ESCOLAR (Alumnos) or CAPITAL_HUMANO (Empleados/Profesores)
+    let externalUser = null;
+    let computedRole = '';
+    let computedFuncion = '';
+    let foundName = '';
+
+    const escolarRow = db.prepare('SELECT nombre, carrera, estatus FROM ESCOLAR WHERE matricula = ?').get(username);
+    if (escolarRow) {
+      externalUser = escolarRow;
+      computedRole = 'Alumno';
+      computedFuncion = 'Estudiante';
+      foundName = escolarRow.nombre;
+    } else {
+      const capitalRow = db.prepare('SELECT nombre, puesto, estatus FROM CAPITAL_HUMANO WHERE matricula_nomina = ?').get(username);
+      if (capitalRow) {
+        externalUser = capitalRow;
+        computedRole = capitalRow.puesto.toLowerCase().includes('profesor') ? 'Profesor' : 'Administrador';
+        computedFuncion = capitalRow.puesto;
+        foundName = capitalRow.nombre;
+      }
+    }
+
+    if (!externalUser) {
+      return res.status(404).json({ error: 'La matrícula o nómina no existe en los registros de la institución.' });
+    }
+
+    const passwordHash = username; // Password equals matricula
+    const email = `${username.toLowerCase()}@tec.mx`;
+
     const result = db.prepare(`
       INSERT INTO USUARIO (matricula_nomina, rol, funcion, contrasena_hash, estatus, nombre, email, avatar)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       username,
-      role,
-      funcion || 'Personal Administrativo',
-      passwordHash || '1234',
-      status || 'Activo',
-      name || username,
-      email || `${username.toLowerCase()}@biblioteca.edu`,
-      avatar || ''
+      computedRole,
+      computedFuncion,
+      passwordHash,
+      'Activo',
+      foundName,
+      email,
+      ''
     );
-    res.status(201).json({ id: String(result.lastInsertRowid), username, role, name, email, avatar, status });
+    
+    res.status(201).json({ id: String(result.lastInsertRowid), username, role: computedRole, name: foundName, email, avatar: '', status: 'Activo' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -126,14 +126,23 @@ export function UserManagement() {
     setIsPermissionsModalOpen(false);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId) {
       updateUser(editingId, formData);
+      setIsModalOpen(false);
+      toast.success('Usuario actualizado', { description: 'Los datos del usuario han sido guardados.' });
     } else {
-      addUser(formData);
+      const response = await addUser({
+        username: formData.username
+      });
+      if (response && response.success) {
+        setIsModalOpen(false);
+        toast.success('Usuario creado', { description: response.message });
+      } else {
+        toast.error('Error al alta de usuario', { description: response?.message || 'No se pudo crear el usuario.' });
+      }
     }
-    setIsModalOpen(false);
   };
 
   const confirmDelete = () => {
@@ -322,61 +331,65 @@ export function UserManagement() {
               <form id="user-form" onSubmit={handleSave} className="space-y-6">
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Nombre */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-900 block">Nombre completo</label>
-                    <input 
-                      required
-                      type="text" 
-                      value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
-                      disabled={!!editingId}
-                      className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all ${
-                        editingId 
-                          ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
-                          : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
-                      }`}
-                    />
-                    {editingId && (
-                      <p className="text-xs text-neutral-400 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        No se puede editar el nombre después del alta
-                      </p>
-                    )}
-                  </div>
+                  {editingId && (
+                    <>
+                      {/* Nombre */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-900 block">Nombre completo</label>
+                        <input 
+                          required
+                          type="text" 
+                          value={formData.name}
+                          onChange={e => setFormData({...formData, name: e.target.value})}
+                          disabled={!!editingId}
+                          className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all ${
+                            editingId 
+                              ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
+                              : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
+                          }`}
+                        />
+                        {editingId && (
+                          <p className="text-xs text-neutral-400 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            No se puede editar el nombre después del alta
+                          </p>
+                        )}
+                      </div>
 
-                  {/* Email */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-900 block">Correo electrónico</label>
-                    <input 
-                      required
-                      type="email" 
-                      value={formData.email}
-                      onChange={e => setFormData({...formData, email: e.target.value})}
-                      disabled={!!editingId}
-                      className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all ${
-                        editingId 
-                          ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
-                          : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
-                      }`}
-                    />
-                    {editingId && (
-                      <p className="text-xs text-neutral-400 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        No se puede editar el correo después del alta
-                      </p>
-                    )}
-                  </div>
+                      {/* Email */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-900 block">Correo electrónico</label>
+                        <input 
+                          required
+                          type="email" 
+                          value={formData.email}
+                          onChange={e => setFormData({...formData, email: e.target.value})}
+                          disabled={!!editingId}
+                          className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all ${
+                            editingId 
+                              ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
+                              : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
+                          }`}
+                        />
+                        {editingId && (
+                          <p className="text-xs text-neutral-400 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            No se puede editar el correo después del alta
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   {/* Username (Matrícula) */}
-                  <div className="space-y-2">
+                  <div className={`space-y-2 ${!editingId ? 'md:col-span-2' : ''}`}>
                     <label className="text-sm font-semibold text-gray-900 block">Matrícula o Nómina</label>
                     <input 
                       required
                       type="text" 
                       value={formData.username}
                       onChange={e => setFormData({...formData, username: e.target.value.toUpperCase()})}
-                      placeholder="Ej. A01234567"
+                      placeholder="Ej. 614070"
                       disabled={!!editingId}
                       className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all uppercase ${
                         editingId 
@@ -392,43 +405,46 @@ export function UserManagement() {
                     )}
                   </div>
 
-                  {/* Rol */}
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-semibold text-gray-900 block">Rol del usuario</label>
-                    <select 
-                      value={formData.role}
-                      onChange={e => setFormData({...formData, role: e.target.value as Role})}
-                      className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
-                    >
-                      {ROLES.map(role => (
-                        <option key={role} value={role}>{role}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Avatar URL */}
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-semibold text-gray-900 block">URL del Avatar (Opcional)</label>
-                    <div className="flex gap-4 items-center">
-                      <div className="w-12 h-12 shrink-0 border border-neutral-200 rounded-full overflow-hidden bg-neutral-100 shadow-sm flex items-center justify-center">
-                        {formData.avatar ? (
-                          <ImageWithFallback src={formData.avatar} alt="Preview" className="w-full h-full object-cover" />
-                        ) : (
-                          <UserIcon className="w-6 h-6 text-neutral-300" />
-                        )}
-                      </div>
-                      <div className="flex-1 relative">
-                        <input 
-                          type="url" 
-                          value={formData.avatar}
-                          onChange={e => setFormData({...formData, avatar: e.target.value})}
-                          placeholder="https://ejemplo.com/avatar.jpg"
+                  {editingId && (
+                    <>
+                      {/* Rol */}
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-sm font-semibold text-gray-900 block">Rol del usuario</label>
+                        <select 
+                          value={formData.role}
+                          onChange={e => setFormData({...formData, role: e.target.value as Role})}
                           className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
-                        />
+                        >
+                          {ROLES.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
                       </div>
-                    </div>
-                  </div>
 
+                      {/* Avatar URL */}
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-sm font-semibold text-gray-900 block">URL del Avatar (Opcional)</label>
+                        <div className="flex gap-4 items-center">
+                          <div className="w-12 h-12 shrink-0 border border-neutral-200 rounded-full overflow-hidden bg-neutral-100 shadow-sm flex items-center justify-center">
+                            {formData.avatar ? (
+                              <ImageWithFallback src={formData.avatar} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                              <UserIcon className="w-6 h-6 text-neutral-300" />
+                            )}
+                          </div>
+                          <div className="flex-1 relative">
+                            <input 
+                              type="url" 
+                              value={formData.avatar}
+                              onChange={e => setFormData({...formData, avatar: e.target.value})}
+                              placeholder="https://ejemplo.com/avatar.jpg"
+                              className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </form>
             </div>

@@ -72,3 +72,11 @@ INSERT INTO LISTA_ESPERA (id_lista_espera, id_usuario, id_libro, fecha_registro,
 (2, 4, 6, '2026-03-05', 'Pendiente');
 
 SELECT setval('lista_espera_id_lista_espera_seq', 2);
+
+-- Insertar Datos Simulados de Bases de Datos Externas
+INSERT INTO ESCOLAR (matricula, nombre, carrera, estatus) VALUES
+('614070', 'Lizbeth Berzosa Cervantes', 'Ingeniería', 'Activo'),
+('647144', 'Galia Sejudo Mireles', 'Negocios', 'Activo'),
+('615347', 'Ethan Patricio Rivera Saldivar', 'Ingeniería', 'Activo'),
+('646278', 'Victor Emiliano Berlanga Mendoza', 'Ingeniería', 'Activo'),
+('587823', 'Alejandra Morón Rodríguez', 'Negocios', 'Activo');
