@@ -183,7 +183,7 @@ export function Catalog() {
 
           {filteredBooks.length > 0 ? (
             <div className={viewMode === 'grid' 
-              ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 pb-12"
+              ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 pb-12"
               : "flex flex-col gap-4 pb-12"
             }>
               {filteredBooks.map((book) => (
@@ -295,13 +295,14 @@ export function Catalog() {
             </button>
 
             {/* Left: Cover */}
-            <div className="w-full md:w-2/5 bg-neutral-100 shrink-0 relative aspect-[3/4] md:aspect-auto">
-              <ImageWithFallback 
-                src={selectedBook.cover} 
-                alt={selectedBook.title}
-                className="w-full h-full object-cover" 
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent md:hidden"></div>
+            <div className="w-full md:w-2/5 bg-neutral-100 shrink-0 relative pt-8 pb-4 md:p-0 flex justify-center md:block">
+              <div className="w-32 sm:w-40 md:w-full aspect-[2/3] md:aspect-auto md:h-full relative overflow-hidden rounded-xl md:rounded-none shadow-xl shadow-black/10 md:shadow-none transition-all">
+                <ImageWithFallback 
+                  src={selectedBook.cover} 
+                  alt={selectedBook.title}
+                  className="w-full h-full object-cover" 
+                />
+              </div>
             </div>
 
             {/* Right: Details & Actions */}
