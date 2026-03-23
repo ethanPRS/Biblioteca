@@ -12,7 +12,7 @@ import { useSettings } from '../context/SettingsContext';
 import { toast } from 'sonner';
 
 export function UserManagement() {
-  const { user: currentUser, users, addUser, updateUser, deleteUser, rolePermissions, updateRolePermissions } = useAuth();
+  const { user: currentUser, users, addUser, updateUser, deleteUser, rolePermissions, updateRolePermissions, findExternalUser } = useAuth();
   const { loans } = useLoans();
   const { books } = useBooks();
   const { settings } = useSettings();
@@ -23,6 +23,8 @@ export function UserManagement() {
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [externalUserToConfirm, setExternalUserToConfirm] = useState<Partial<User> | null>(null);
+  const [isSearchingUser, setIsSearchingUser] = useState(false);
   
   // Form State
   const initialFormState = {
@@ -50,6 +52,7 @@ export function UserManagement() {
   const handleOpenAdd = () => {
     setFormData(initialFormState);
     setEditingId(null);
+    setExternalUserToConfirm(null);
     setIsModalOpen(true);
   };
 
@@ -126,18 +129,36 @@ export function UserManagement() {
     setIsPermissionsModalOpen(false);
   };
 
+  const handleSearchExternalUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.username) return;
+
+    setIsSearchingUser(true);
+    const response = await findExternalUser(formData.username);
+    setIsSearchingUser(false);
+
+    if (response.success && response.user) {
+      setExternalUserToConfirm(response.user);
+      toast.success('Usuario encontrado', { description: 'Verifica los datos antes de confirmar el alta.' });
+    } else {
+      setExternalUserToConfirm(null);
+      toast.error('No encontrado', { description: response.message || 'La matrícula no existe en las bases de datos.' });
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId) {
       updateUser(editingId, formData);
       setIsModalOpen(false);
       toast.success('Usuario actualizado', { description: 'Los datos del usuario han sido guardados.' });
-    } else {
+    } else if (externalUserToConfirm) {
       const response = await addUser({
         username: formData.username
       });
       if (response && response.success) {
         setIsModalOpen(false);
+        setExternalUserToConfirm(null);
         toast.success('Usuario creado', { description: response.message });
       } else {
         toast.error('Error al alta de usuario', { description: response?.message || 'No se pudo crear el usuario.' });
@@ -328,142 +349,218 @@ export function UserManagement() {
             </div>
 
             <div className="p-6 overflow-y-auto">
-              <form id="user-form" onSubmit={handleSave} className="space-y-6">
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {editingId && (
-                    <>
-                      {/* Nombre */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-900 block">Nombre completo</label>
-                        <input 
-                          required
-                          type="text" 
-                          value={formData.name}
-                          onChange={e => setFormData({...formData, name: e.target.value})}
-                          disabled={!!editingId}
-                          className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all ${
-                            editingId 
-                              ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
-                              : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
-                          }`}
-                        />
-                        {editingId && (
-                          <p className="text-xs text-neutral-400 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            No se puede editar el nombre después del alta
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Email */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-900 block">Correo electrónico</label>
-                        <input 
-                          required
-                          type="email" 
-                          value={formData.email}
-                          onChange={e => setFormData({...formData, email: e.target.value})}
-                          disabled={!!editingId}
-                          className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all ${
-                            editingId 
-                              ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
-                              : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
-                          }`}
-                        />
-                        {editingId && (
-                          <p className="text-xs text-neutral-400 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            No se puede editar el correo después del alta
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Username (Matrícula) */}
-                  <div className={`space-y-2 ${!editingId ? 'md:col-span-2' : ''}`}>
-                    <label className="text-sm font-semibold text-gray-900 block">Matrícula o Nómina</label>
-                    <input 
-                      required
-                      type="text" 
-                      value={formData.username}
-                      onChange={e => setFormData({...formData, username: e.target.value.toUpperCase()})}
-                      placeholder="Ej. 614070"
-                      disabled={!!editingId}
-                      className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all uppercase ${
-                        editingId 
-                          ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
-                          : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
-                      }`}
-                    />
-                    {editingId && (
-                      <p className="text-xs text-neutral-400 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        No se puede editar la matrícula después del alta
-                      </p>
-                    )}
+              {!editingId && !externalUserToConfirm ? (
+                <form id="search-form" onSubmit={handleSearchExternalUser} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-900 block">Buscar por Matrícula o Nómina</label>
+                    <div className="flex gap-3">
+                      <input 
+                        required
+                        type="text" 
+                        value={formData.username}
+                        onChange={e => setFormData({...formData, username: e.target.value.toUpperCase()})}
+                        placeholder="Ej. 614070"
+                        className="flex-1 bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all uppercase"
+                      />
+                      <button 
+                        type="submit"
+                        disabled={isSearchingUser}
+                        className="bg-[#2B74FF] hover:bg-blue-600 disabled:bg-blue-300 text-white px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-md shadow-[#2B74FF]/20 flex items-center justify-center min-w-[120px]"
+                      >
+                        {isSearchingUser ? 'Buscando...' : 'Buscar'}
+                      </button>
+                    </div>
                   </div>
-
-                  {editingId && (
-                    <>
-                      {/* Rol */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-semibold text-gray-900 block">Rol del usuario</label>
-                        <select 
-                          value={formData.role}
-                          onChange={e => setFormData({...formData, role: e.target.value as Role})}
-                          className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
-                        >
-                          {ROLES.map(role => (
-                            <option key={role} value={role}>{role}</option>
-                          ))}
-                        </select>
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 text-blue-800">
+                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+                    <div className="text-sm">
+                      <p className="font-semibold mb-1">Búsqueda en base de datos externa</p>
+                      <p className="opacity-90">Ingresa la matrícula del alumno o nómina del empleado para validar su existencia en los registros institucionales antes de crear su cuenta universitaria.</p>
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                <form id="user-form" onSubmit={handleSave} className="space-y-6">
+                  {!editingId && externalUserToConfirm && (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <CheckCircle2 className="w-6 h-6 text-green-600" />
+                        <h3 className="font-bold text-green-800 text-lg">Usuario Verificado</h3>
                       </div>
-
-                      {/* Avatar URL */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-semibold text-gray-900 block">URL del Avatar (Opcional)</label>
-                        <div className="flex gap-4 items-center">
-                          <div className="w-12 h-12 shrink-0 border border-neutral-200 rounded-full overflow-hidden bg-neutral-100 shadow-sm flex items-center justify-center">
-                            {formData.avatar ? (
-                              <ImageWithFallback src={formData.avatar} alt="Preview" className="w-full h-full object-cover" />
-                            ) : (
-                              <UserIcon className="w-6 h-6 text-neutral-300" />
-                            )}
-                          </div>
-                          <div className="flex-1 relative">
-                            <input 
-                              type="url" 
-                              value={formData.avatar}
-                              onChange={e => setFormData({...formData, avatar: e.target.value})}
-                              placeholder="https://ejemplo.com/avatar.jpg"
-                              className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
-                            />
-                          </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-green-700/70 font-medium text-xs mb-1">Nombre Extraído</p>
+                          <p className="font-semibold text-green-900">{externalUserToConfirm.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-green-700/70 font-medium text-xs mb-1">Matrícula/Nómina</p>
+                          <p className="font-semibold font-mono text-green-900">{externalUserToConfirm.username}</p>
+                        </div>
+                        <div>
+                          <p className="text-green-700/70 font-medium text-xs mb-1">Correo Institucional</p>
+                          <p className="font-semibold text-green-900">{externalUserToConfirm.email}</p>
+                        </div>
+                        <div>
+                          <p className="text-green-700/70 font-medium text-xs mb-1">Rol Asignado</p>
+                          <p className="font-semibold text-green-900">{externalUserToConfirm.role}</p>
                         </div>
                       </div>
-                    </>
+                    </div>
                   )}
-                </div>
-              </form>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {editingId && (
+                      <>
+                        {/* Nombre */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-900 block">Nombre completo</label>
+                          <input 
+                            required
+                            type="text" 
+                            value={formData.name}
+                            onChange={e => setFormData({...formData, name: e.target.value})}
+                            disabled={!!editingId}
+                            className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all ${
+                              editingId 
+                                ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
+                                : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
+                            }`}
+                          />
+                          {editingId && (
+                            <p className="text-xs text-neutral-400 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              No se puede editar el nombre después del alta
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Email */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-900 block">Correo electrónico</label>
+                          <input 
+                            required
+                            type="email" 
+                            value={formData.email}
+                            onChange={e => setFormData({...formData, email: e.target.value})}
+                            disabled={!!editingId}
+                            className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all ${
+                              editingId 
+                                ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
+                                : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
+                            }`}
+                          />
+                          {editingId && (
+                            <p className="text-xs text-neutral-400 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              No se puede editar el correo después del alta
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Username (Matrícula) - Solo editable cuando no está verificando ni editando */}
+                    <div className={`space-y-2 ${!editingId ? 'md:col-span-2' : ''}`}>
+                      <label className="text-sm font-semibold text-gray-900 block">Matrícula o Nómina</label>
+                      <input 
+                        required
+                        type="text" 
+                        value={formData.username}
+                        onChange={e => setFormData({...formData, username: e.target.value.toUpperCase()})}
+                        placeholder="Ej. 614070"
+                        disabled={!!editingId || !!externalUserToConfirm}
+                        className={`w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none transition-all uppercase ${
+                          (editingId || externalUserToConfirm)
+                            ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' 
+                            : 'bg-[#F8FAFC] focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20'
+                        }`}
+                      />
+                      {editingId && (
+                        <p className="text-xs text-neutral-400 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          No se puede editar la matrícula después del alta
+                        </p>
+                      )}
+                    </div>
+
+                    {editingId && (
+                      <>
+                        {/* Rol */}
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="text-sm font-semibold text-gray-900 block">Rol del usuario</label>
+                          <select 
+                            value={formData.role}
+                            onChange={e => setFormData({...formData, role: e.target.value as Role})}
+                            className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
+                          >
+                            {ROLES.map(role => (
+                              <option key={role} value={role}>{role}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Avatar URL */}
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="text-sm font-semibold text-gray-900 block">URL del Avatar (Opcional)</label>
+                          <div className="flex gap-4 items-center">
+                            <div className="w-12 h-12 shrink-0 border border-neutral-200 rounded-full overflow-hidden bg-neutral-100 shadow-sm flex items-center justify-center">
+                              {formData.avatar ? (
+                                <ImageWithFallback src={formData.avatar} alt="Preview" className="w-full h-full object-cover" />
+                              ) : (
+                                <UserIcon className="w-6 h-6 text-neutral-300" />
+                              )}
+                            </div>
+                            <div className="flex-1 relative">
+                              <input 
+                                type="url" 
+                                value={formData.avatar}
+                                onChange={e => setFormData({...formData, avatar: e.target.value})}
+                                placeholder="https://ejemplo.com/avatar.jpg"
+                                className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </form>
+              )}
             </div>
 
             <div className="px-6 py-4 bg-neutral-50 border-t border-neutral-100 flex justify-end gap-3 shrink-0">
               <button 
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  if (!editingId && externalUserToConfirm) {
+                    setExternalUserToConfirm(null); // Back to search
+                  } else {
+                    setIsModalOpen(false);
+                  }
+                }}
                 className="px-5 py-2.5 rounded-xl font-semibold text-sm text-neutral-600 hover:bg-neutral-200 transition-colors"
               >
-                Cancelar
+                {!editingId && externalUserToConfirm ? 'Cancelar Alta' : 'Cancelar'}
               </button>
-              <button 
-                form="user-form"
-                type="submit"
-                className="bg-[#2B74FF] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md shadow-[#2B74FF]/20"
-              >
-                {editingId ? 'Guardar Cambios' : 'Agregar Usuario'}
-              </button>
+              
+              {(!editingId && !externalUserToConfirm) ? (
+                <button 
+                  form="search-form"
+                  type="submit"
+                  disabled={isSearchingUser}
+                  className="bg-[#2B74FF] hover:bg-blue-600 disabled:bg-blue-300 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md shadow-[#2B74FF]/20"
+                >
+                  {isSearchingUser ? 'Buscando...' : 'Buscar Matrícula'}
+                </button>
+              ) : (
+                <button 
+                  form="user-form"
+                  type="submit"
+                  className="bg-[#2B74FF] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md shadow-[#2B74FF]/20"
+                >
+                  {editingId ? 'Guardar Cambios' : 'Confirmar y Dar de Alta'}
+                </button>
+              )}
             </div>
             
           </div>

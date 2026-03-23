@@ -59,6 +59,7 @@ interface AuthContextType {
   login: (username: string, pass: string) => Promise<boolean>;
   logout: () => void;
   addUser: (user: Partial<User>) => Promise<{success: boolean, message?: string}>;
+  findExternalUser: (username: string) => Promise<{success: boolean, user?: Partial<User>, message?: string}>;
   updateUser: (id: string, user: Partial<User>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   updateRolePermissions: (role: Role, permissions: Screen[]) => void;
@@ -112,6 +113,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => setUser(null);
+
+  const findExternalUser = async (username: string) => {
+    try {
+      const res = await fetch(`${API_URL}/external/${username}`);
+      const data = await res.json();
+      if (res.ok) {
+        return { success: true, user: data as Partial<User> };
+      } else {
+        return { success: false, message: data.error || 'Usuario no encontrado' };
+      }
+    } catch (error) {
+      console.error('Error finding user:', error);
+      return { success: false, message: 'Error de red' };
+    }
+  };
 
   const addUser = async (newUser: Partial<User>) => {
     try {
@@ -180,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       rolePermissions,
       login, 
       logout, 
+      findExternalUser,
       addUser, 
       updateUser, 
       deleteUser,

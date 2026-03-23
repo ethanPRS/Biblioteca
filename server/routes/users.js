@@ -151,6 +151,49 @@ router.delete('/:id', (req, res) => {
   }
 });
 
+// GET external user
+router.get('/external/:username', (req, res) => {
+  const { username } = req.params;
+  try {
+    const existing = db.prepare('SELECT id_usuario FROM USUARIO WHERE matricula_nomina = ?').get(username);
+    if (existing) {
+      return res.status(400).json({ error: 'El usuario ya está registrado en el sistema local.' });
+    }
+
+    let externalUser = null;
+    let computedRole = '';
+    let foundName = '';
+
+    const escolarRow = db.prepare('SELECT nombre, carrera, estatus, correo FROM ESCOLAR WHERE matricula = ?').get(username);
+    if (escolarRow) {
+      externalUser = escolarRow;
+      computedRole = 'Alumno';
+      foundName = escolarRow.nombre;
+    } else {
+      const capitalRow = db.prepare('SELECT nombre, puesto, estatus, correo FROM CAPITAL_HUMANO WHERE matricula_nomina = ?').get(username);
+      if (capitalRow) {
+        externalUser = capitalRow;
+        computedRole = capitalRow.puesto.toLowerCase().includes('profesor') ? 'Profesor' : 'Administrador';
+        foundName = capitalRow.nombre;
+      }
+    }
+
+    if (!externalUser) {
+      return res.status(404).json({ error: 'La matrícula o nómina no existe en los registros de la institución.' });
+    }
+
+    const email = externalUser.correo || `${username.toLowerCase()}@udem.edu`;
+    res.json({
+      username,
+      name: foundName,
+      role: computedRole,
+      email
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST login verify
 router.post('/auth/login', (req, res) => {
   const { username, password } = req.body;
