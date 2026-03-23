@@ -13,14 +13,14 @@ import { HelpModal } from './HelpModal';
 import { ChatWidget } from './ChatWidget';
 
 const NAV_ITEMS: Array<{ icon: any; label: string; path: string; screenId: Screen, desktopOnly?: boolean }> = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/inicio', screenId: 'inicio' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/inicio', screenId: 'inicio', desktopOnly: true },
   { icon: BookOpen, label: 'Catálogo', path: '/', screenId: 'catalogo' },
-  { icon: ArrowRightLeft, label: 'Préstamos', path: '/prestamos', screenId: 'prestamos' },
-  { icon: Send, label: 'Solicitudes', path: '/solicitudes', screenId: 'solicitudes' },
-  { icon: AlertCircle, label: 'Multas', path: '/multas', screenId: 'multas' },
+  { icon: ArrowRightLeft, label: 'Préstamos', path: '/prestamos', screenId: 'prestamos', desktopOnly: true },
+  { icon: Send, label: 'Solicitudes', path: '/solicitudes', screenId: 'solicitudes', desktopOnly: true },
+  { icon: AlertCircle, label: 'Multas', path: '/multas', screenId: 'multas', desktopOnly: true },
   { icon: BookText, label: 'Gestión de Libros', path: '/gestion-libros', screenId: 'gestion-libros', desktopOnly: true },
   { icon: Users, label: 'Gestión de Usuarios', path: '/gestion-usuarios', screenId: 'gestion-usuarios', desktopOnly: true },
-  { icon: Settings, label: 'Configuración', path: '/config', screenId: 'config' },
+  { icon: Settings, label: 'Configuración', path: '/config', screenId: 'config', desktopOnly: true },
 ];
 
 export function RootLayout() {
