@@ -127,7 +127,26 @@ export function RootLayout() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 h-full relative">
-        <Outlet />
+        {(() => {
+          const currentRoute = NAV_ITEMS.find(i => i.path === location.pathname);
+          if (currentRoute?.desktopOnly) {
+            return (
+              <>
+                <div className="flex lg:hidden flex-col items-center justify-center h-full w-full p-8 text-center bg-[#F8FAFC]">
+                  <AlertCircle className="w-16 h-16 text-[#2B74FF] mb-6" />
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Vista en Escritorio Requerida</h2>
+                  <p className="text-neutral-500 leading-relaxed max-w-sm">
+                    La <span className="font-semibold text-gray-900">{currentRoute.label}</span> contiene información detallada que requiere una pantalla más amplia para una correcta visualización. Por favor, accede desde un ordenador o tableta.
+                  </p>
+                </div>
+                <div className="hidden lg:flex flex-col flex-1 h-full w-full min-w-0">
+                  <Outlet />
+                </div>
+              </>
+            );
+          }
+          return <Outlet />;
+        })()}
       </main>
 
       {/* Toast Notifications */}
