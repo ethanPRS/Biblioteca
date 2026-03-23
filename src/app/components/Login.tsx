@@ -149,32 +149,7 @@ export function Login() {
             </button>
           </form>
 
-          {/* Credenciales de Prueba (Para demostración) */}
-          <div className="mt-12 pt-8 border-t border-neutral-100">
-            <p className="text-xs text-neutral-400 font-semibold mb-4 uppercase tracking-wider">Credenciales de prueba</p>
-            <div className="grid grid-cols-2 gap-3 text-xs text-neutral-600">
-              <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100 transition-colors hover:border-neutral-200 cursor-default">
-                <span className="font-bold text-gray-900 block mb-1">Administrador</span>
-                User: <span className="font-mono bg-white px-1 py-0.5 rounded border border-neutral-200">A001</span><br/>
-                Pass: <span className="font-mono bg-white px-1 py-0.5 rounded border border-neutral-200">1234</span>
-              </div>
-              <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100 transition-colors hover:border-neutral-200 cursor-default">
-                <span className="font-bold text-gray-900 block mb-1">Bibliotecario</span>
-                User: <span className="font-mono bg-white px-1 py-0.5 rounded border border-neutral-200">B001</span><br/>
-                Pass: <span className="font-mono bg-white px-1 py-0.5 rounded border border-neutral-200">1234</span>
-              </div>
-              <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100 transition-colors hover:border-neutral-200 cursor-default">
-                <span className="font-bold text-gray-900 block mb-1">Alumno</span>
-                User: <span className="font-mono bg-white px-1 py-0.5 rounded border border-neutral-200">A002</span><br/>
-                Pass: <span className="font-mono bg-white px-1 py-0.5 rounded border border-neutral-200">1234</span>
-              </div>
-              <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100 transition-colors hover:border-neutral-200 cursor-default">
-                <span className="font-bold text-gray-900 block mb-1">Profesor</span>
-                User: <span className="font-mono bg-white px-1 py-0.5 rounded border border-neutral-200">P001</span><br/>
-                Pass: <span className="font-mono bg-white px-1 py-0.5 rounded border border-neutral-200">1234</span>
-              </div>
-            </div>
-          </div>
+
 
         </div>
       </div>
