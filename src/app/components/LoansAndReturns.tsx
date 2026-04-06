@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
   Search, Plus, Calendar, User as UserIcon, BookOpen, CheckCircle2, X, AlertTriangle, Clock, CalendarCheck
@@ -118,6 +119,7 @@ export function LoansAndReturns() {
     e.preventDefault();
     
     const book = books.find(b => b.id === formData.bookId);
+    const selectedUser = users.find(u => u.id === formData.userId);
     if (!book || book.availableCopies <= 0) return;
 
     addLoan({
@@ -134,10 +136,14 @@ export function LoansAndReturns() {
     updateBook(book.id, { availableCopies: newAvailable, status: newStatus });
 
     setIsModalOpen(false);
+    
+    toast.success("Préstamo registrado con éxito");
+    window.dispatchEvent(new CustomEvent('loan-created', { detail: { bookTitle: book.title, userName: selectedUser?.name || 'Usuario' } }));
   };
 
   const handleReturn = (loan: Loan) => {
     const book = books.find(b => b.id === loan.bookId);
+    const loanUser = users.find(u => u.id === loan.userId);
     if (!book) return;
 
     updateLoan(loan.id, { status: 'Devuelto' });
@@ -148,6 +154,9 @@ export function LoansAndReturns() {
       availableCopies: newAvailable, 
       status: 'Disponible'
     });
+
+    toast.success("Devolución registrada con éxito");
+    window.dispatchEvent(new CustomEvent('loan-returned', { detail: { bookTitle: book.title, userName: loanUser?.name || 'Usuario' } }));
   };
 
   // Estadísticas

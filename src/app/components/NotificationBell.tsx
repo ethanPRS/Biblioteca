@@ -6,11 +6,47 @@ import { useBooks } from '../context/BookContext';
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
+  const [sessionNotifications, setSessionNotifications] = useState<any[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   const { user } = useAuth();
   const { loans } = useLoans();
   const { books } = useBooks();
+
+  useEffect(() => {
+    const handleReturn = (e: any) => {
+      const { bookTitle, userName } = e.detail;
+      setSessionNotifications(prev => [{
+        id: `return-${Date.now()}`,
+        title: 'Devolución Registrada',
+        message: `El libro "${bookTitle}" ha sido devuelto por ${userName}.`,
+        type: 'success',
+        icon: CheckCircle2,
+        color: 'text-green-500',
+        bg: 'bg-green-50',
+        time: 'Ahora'
+      }, ...prev]);
+    };
+    const handleCreate = (e: any) => {
+      const { bookTitle, userName } = e.detail;
+      setSessionNotifications(prev => [{
+        id: `create-${Date.now()}`,
+        title: 'Préstamo Registrado',
+        message: `Se ha registrado el préstamo de "${bookTitle}" para ${userName}.`,
+        type: 'success',
+        icon: CheckCircle2,
+        color: 'text-green-500',
+        bg: 'bg-green-50',
+        time: 'Ahora'
+      }, ...prev]);
+    };
+    window.addEventListener('loan-returned', handleReturn);
+    window.addEventListener('loan-created', handleCreate);
+    return () => {
+      window.removeEventListener('loan-returned', handleReturn);
+      window.removeEventListener('loan-created', handleCreate);
+    };
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -34,6 +70,9 @@ export function NotificationBell() {
     const isAdmin = user.role === 'Administrador' || user.role === 'Bibliotecario';
 
     if (isAdmin) {
+      // Add custom system notifications
+      notifs.push(...sessionNotifications);
+
       // Admin Notifications
       const overdueLoans = loans.filter(l => l.status === 'Activo' && new Date(l.dueDate) < today);
       if (overdueLoans.length > 0) {
