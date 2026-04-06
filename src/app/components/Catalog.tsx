@@ -44,9 +44,11 @@ export function Catalog() {
     // Check max books limit
     const maxBooks = user.role === 'Profesor' ? settings.maxBooksProf : settings.maxBooksStudent;
     const myActiveCount = loans.filter(l => l.userId === user.id && l.status === 'Activo').length;
+    const myPendingCount = loanRequests.filter(r => r.userId === user.id && r.status === 'Pendiente').length;
+    const myTotalCount = myActiveCount + myPendingCount;
     
-    if (myActiveCount >= maxBooks && !isAdmin) {
-      toast.error('Límite alcanzado', { description: `No puedes solicitar más de ${maxBooks} préstamos simultáneos.` });
+    if (myTotalCount >= maxBooks && !isAdmin) {
+      toast.error('Límite alcanzado', { description: `Tienes ${myActiveCount} préstamos activos y ${myPendingCount} solicitudes pendientes. El límite total es de ${maxBooks} libros simultáneos.` });
       return;
     }
 
