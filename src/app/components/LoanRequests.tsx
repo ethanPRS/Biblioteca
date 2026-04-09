@@ -16,7 +16,7 @@ export function LoanRequests() {
   const { user: currentUser, users } = useAuth();
   const { books, updateBook } = useBooks();
   const { loanRequests, updateLoanRequest } = useLoanRequests();
-  const { addLoan } = useLoans();
+  const { loans, addLoan } = useLoans();
   const { settings } = useSettings();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -249,7 +249,7 @@ export function LoanRequests() {
                             {request.status === 'Aprobada' && (
                               <div className="flex justify-end">
                                 {(() => {
-                                  const activeLoan = useLoans().loans.find(
+                                  const activeLoan = loans.find(
                                     l => l.userId === request.userId && l.bookId === request.bookId && l.status === 'Activo'
                                   );
                                   if (activeLoan) {
