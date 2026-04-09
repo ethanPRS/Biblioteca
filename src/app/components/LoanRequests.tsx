@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router';
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
   Search, Check, X, Clock, AlertCircle
@@ -243,6 +244,26 @@ export function LoanRequests() {
                                   <X className="w-3.5 h-3.5" />
                                   Rechazar
                                 </button>
+                              </div>
+                            )}
+                            {request.status === 'Aprobada' && (
+                              <div className="flex justify-end">
+                                {(() => {
+                                  const activeLoan = useLoans().loans.find(
+                                    l => l.userId === request.userId && l.bookId === request.bookId && l.status === 'Activo'
+                                  );
+                                  if (activeLoan) {
+                                    return (
+                                      <Link 
+                                        to="/prestamos"
+                                        className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-semibold text-xs transition-all flex items-center gap-1"
+                                      >
+                                        Ir a Devolver
+                                      </Link>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                               </div>
                             )}
                           </td>
