@@ -57,10 +57,10 @@ SELECT setval('ejemplar_id_ejemplar_seq', 8);
 -- L3 (id_prestamo 3): Libro 5 -> user_id: 3 -> id_ejemplar: 5 => multa + retraso simulado (fecha atrasada)
 -- L4 (id_prestamo 4): Libro 1 -> user_id: 4 -> id_ejemplar: 1 => multa + retraso simulado
 INSERT INTO PRESTAMO (id_prestamo, id_usuario, id_ejemplar, fecha_prestamo, fecha_vencimiento, estatus) VALUES
-(1, 3, 2, '2026-03-01', '2026-03-15', 'Activo'),
-(2, 4, 7, '2026-03-02', '2026-03-16', 'Activo'),
-(3, 3, 5, '2026-02-01', '2026-02-15', 'Activo'),
-(4, 4, 1, '2026-02-15', '2026-03-01', 'Activo');
+(1, 3, 2, '2026-04-08', '2026-04-22', 'Activo'),
+(2, 4, 7, '2026-04-09', '2026-04-23', 'Activo'),
+(3, 3, 5, '2026-04-05', '2026-04-19', 'Activo'),
+(4, 4, 1, '2026-04-07', '2026-04-21', 'Activo');
 
 SELECT setval('prestamo_id_prestamo_seq', 4);
 
