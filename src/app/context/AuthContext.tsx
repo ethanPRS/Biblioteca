@@ -8,6 +8,7 @@ export const ROLES: Role[] = ['Administrador', 'Bibliotecario', 'Alumno', 'Profe
 export type Screen = 
   | 'inicio'
   | 'catalogo' 
+  | 'mis-libros'
   | 'prestamos'
   | 'solicitudes'
   | 'multas'
@@ -18,6 +19,7 @@ export type Screen =
 export const SCREENS: { id: Screen; name: string }[] = [
   { id: 'inicio', name: 'Dashboard / Inicio' },
   { id: 'catalogo', name: 'Catálogo de Libros' },
+  { id: 'mis-libros', name: 'Mis Libros' },
   { id: 'prestamos', name: 'Préstamos y Devoluciones' },
   { id: 'solicitudes', name: 'Solicitudes de Préstamo' },
   { id: 'multas', name: 'Gestión de Multas' },
@@ -32,9 +34,9 @@ export type RolePermissions = Record<Role, Screen[]>;
 const INITIAL_ROLE_PERMISSIONS: RolePermissions = {
   'Administrador': ['inicio', 'catalogo', 'prestamos', 'solicitudes', 'multas', 'gestion-libros', 'gestion-usuarios', 'config'],
   'Bibliotecario': ['inicio', 'catalogo', 'prestamos', 'solicitudes', 'multas', 'gestion-libros', 'config'],
-  'Profesor': ['catalogo', 'solicitudes', 'multas'],
-  'Alumno': ['catalogo', 'solicitudes', 'multas'],
-  'Colaborador': ['catalogo', 'solicitudes']
+  'Profesor': ['catalogo', 'mis-libros', 'solicitudes', 'multas'],
+  'Alumno': ['catalogo', 'mis-libros', 'solicitudes', 'multas'],
+  'Colaborador': ['catalogo', 'mis-libros', 'solicitudes']
 };
 
 export interface User {

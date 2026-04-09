@@ -10,6 +10,7 @@ import { LoanRequests } from "./components/LoanRequests";
 import { FinesManagement } from "./components/FinesManagement";
 import { Dashboard } from "./components/Dashboard";
 import { SettingsConfig } from "./components/SettingsConfig";
+import { MyBooks } from "./components/MyBooks";
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: Catalog },
       { path: "inicio", Component: Dashboard },
+      { path: "mis-libros", Component: MyBooks },
       { path: "prestamos", Component: LoansAndReturns },
       { path: "solicitudes", Component: LoanRequests },
       { path: "multas", Component: FinesManagement },

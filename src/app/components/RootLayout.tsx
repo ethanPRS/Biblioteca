@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation, Navigate } from 'react-router';
 import { 
   Search, Bell, LayoutDashboard, BookOpen, BookText, 
   Users, Settings, HelpCircle, LogOut, ArrowRightLeft,
-  RotateCcw, AlertCircle, Send, Menu
+  RotateCcw, AlertCircle, Send, Menu, BookMarked
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useAuth, Screen } from '../context/AuthContext';
@@ -15,6 +15,7 @@ import { ChatWidget } from './ChatWidget';
 const NAV_ITEMS: Array<{ icon: any; label: string; path: string; screenId: Screen, desktopOnly?: boolean }> = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/inicio', screenId: 'inicio', desktopOnly: true },
   { icon: BookOpen, label: 'Catálogo', path: '/', screenId: 'catalogo' },
+  { icon: BookMarked, label: 'Mis Libros', path: '/mis-libros', screenId: 'mis-libros' },
   { icon: ArrowRightLeft, label: 'Préstamos', path: '/prestamos', screenId: 'prestamos', desktopOnly: true },
   { icon: Send, label: 'Solicitudes', path: '/solicitudes', screenId: 'solicitudes', desktopOnly: true },
   { icon: AlertCircle, label: 'Multas', path: '/multas', screenId: 'multas', desktopOnly: true },
