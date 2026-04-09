@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+const API_URL = 'http://localhost:5001/api/loanRequests';
 
 export interface LoanRequest {
   id: string;
@@ -10,44 +12,66 @@ export interface LoanRequest {
   reviewedBy?: string;
 }
 
-const INITIAL_LOAN_REQUESTS: LoanRequest[] = [
-  { 
-    id: 'lr1', 
-    bookId: 5, 
-    userId: '3', 
-    requestDate: '2026-03-06', 
-    status: 'Pendiente' 
-  },
-  { 
-    id: 'lr2', 
-    bookId: 6, 
-    userId: '4', 
-    requestDate: '2026-03-05', 
-    status: 'Pendiente' 
-  },
-];
-
 interface LoanRequestContextType {
   loanRequests: LoanRequest[];
-  addLoanRequest: (request: Omit<LoanRequest, 'id'>) => void;
-  updateLoanRequest: (id: string, request: Partial<LoanRequest>) => void;
+  addLoanRequest: (request: Omit<LoanRequest, 'id'>) => Promise<void>;
+  updateLoanRequest: (id: string, request: Partial<LoanRequest>) => Promise<void>;
+  fetchLoanRequests: () => Promise<void>;
 }
 
 const LoanRequestContext = createContext<LoanRequestContextType | null>(null);
 
 export function LoanRequestProvider({ children }: { children: React.ReactNode }) {
-  const [loanRequests, setLoanRequests] = useState<LoanRequest[]>(INITIAL_LOAN_REQUESTS);
+  const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([]);
 
-  const addLoanRequest = (newRequest: Omit<LoanRequest, 'id'>) => {
-    setLoanRequests([{ ...newRequest, id: Date.now().toString() }, ...loanRequests]);
+  const fetchLoanRequests = async () => {
+    try {
+      const res = await fetch(API_URL);
+      if (res.ok) {
+        const data = await res.json();
+        setLoanRequests(data);
+      }
+    } catch (error) {
+      console.error('Error fetching loan requests:', error);
+    }
   };
 
-  const updateLoanRequest = (id: string, updatedRequest: Partial<LoanRequest>) => {
-    setLoanRequests(loanRequests.map(lr => lr.id === id ? { ...lr, ...updatedRequest } : lr));
+  useEffect(() => {
+    fetchLoanRequests();
+  }, []);
+
+  const addLoanRequest = async (newRequest: Omit<LoanRequest, 'id'>) => {
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRequest)
+      });
+      if (res.ok) {
+        await fetchLoanRequests();
+      }
+    } catch (error) {
+      console.error('Error adding loan request:', error);
+    }
+  };
+
+  const updateLoanRequest = async (id: string, updatedRequest: Partial<LoanRequest>) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedRequest)
+      });
+      if (res.ok) {
+        await fetchLoanRequests();
+      }
+    } catch (error) {
+      console.error('Error updating loan request:', error);
+    }
   };
 
   return (
-    <LoanRequestContext.Provider value={{ loanRequests, addLoanRequest, updateLoanRequest }}>
+    <LoanRequestContext.Provider value={{ loanRequests, addLoanRequest, updateLoanRequest, fetchLoanRequests }}>
       {children}
     </LoanRequestContext.Provider>
   );
