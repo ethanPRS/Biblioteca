@@ -94,10 +94,13 @@ Reglas:
       } catch (modelError) {
         console.warn(`Model ${modelName} failed: ${modelError.message}`);
         lastError = modelError;
-        // Only retry on 503 (overloaded) or 429 (rate limit)
-        if (!modelError.message?.includes('503') && !modelError.message?.includes('429') && !modelError.message?.includes('overloaded')) {
-          break;
-        }
+        const isRetryable = modelError.message?.includes('503') ||
+                            modelError.message?.includes('429') ||
+                            modelError.message?.includes('overloaded') ||
+                            modelError.message?.includes('quota');
+        if (!isRetryable) break;
+        // Small delay before trying next model
+        await new Promise(r => setTimeout(r, 1000));
       }
     }
 
