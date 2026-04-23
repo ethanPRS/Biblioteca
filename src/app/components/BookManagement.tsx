@@ -46,10 +46,13 @@ export function BookManagement() {
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
-  const filteredBooks = books.filter(book => 
-    book.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    book.author.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredBooks = books.filter(book => {
+    const q = searchQuery.toLowerCase();
+    return book.title.toLowerCase().includes(q) ||
+           book.author.toLowerCase().includes(q) ||
+           (book.isbn && book.isbn.toLowerCase().includes(q));
+  });
+
 
   const handleOpenAdd = () => {
     setFormData(initialFormState);

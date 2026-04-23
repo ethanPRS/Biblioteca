@@ -31,8 +31,10 @@ export function Catalog() {
 
   const filteredBooks = books.filter(book => {
     const matchesCategory = activeCategory === 'Todos' || book.category === activeCategory;
-    const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          book.author.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = book.title.toLowerCase().includes(q) || 
+                          book.author.toLowerCase().includes(q) ||
+                          (book.isbn && book.isbn.toLowerCase().includes(q));
     return matchesCategory && matchesSearch;
   });
 
