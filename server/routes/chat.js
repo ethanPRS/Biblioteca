@@ -8,10 +8,7 @@ const router = express.Router();
 async function fetchBookCatalog() {
   const { data: libros, error } = await supabase
     .from('libro')
-    .select(`
-      titulo, autor, editorial_clave, edicion, formato, estatus_catalogo, isbn,
-      ejemplar ( estatus )
-    `);
+    .select(`titulo, autor, editorial_clave, edicion, formato, estatus_catalogo, isbn, ejemplar ( estatus )`);
 
   if (error || !libros) return 'No se pudo obtener el catálogo de libros.';
 
@@ -35,6 +32,9 @@ async function fetchBookCatalog() {
   return lines.join('\n');
 }
 
+// Models to try in order — fallback if one is overloaded
+const MODEL_CHAIN = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+
 router.post('/', async (req, res) => {
   try {
     const { message, history, context } = req.body;
@@ -44,11 +44,8 @@ router.post('/', async (req, res) => {
       return res.status(500).json({ error: 'Falta configurar GEMINI_API_KEY en el servidor.' });
     }
 
-    // Fetch real-time book catalog from Supabase
     const bookCatalog = await fetchBookCatalog();
-
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const systemPrompt = `
 Eres el Asistente Virtual Oficial de la biblioteca "Ducky University".
@@ -68,38 +65,43 @@ Reglas:
 1. Háblale por su nombre amigablemente.
 2. Usa el catálogo de arriba para responder preguntas sobre disponibilidad de libros. Es información en tiempo real.
 3. Si preguntan por un libro específico, busca en el catálogo y responde con precisión (disponible, prestado, dado de baja, etc.).
-4. Si el rol es "Administrador" o "Bibliotecario", puedes ayudar diciéndole cómo realizar gestiones (agregar libros, revisar multas, etc.).
-5. Si el rol es "Alumno" o "Profesor", ayúdale a saber qué libros tiene, fechas de vencimiento y cómo hacer la devolución.
+4. Si el rol es "Administrador" o "Bibliotecario", puedes ayudar diciéndole cómo realizar gestiones.
+5. Si el rol es "Alumno" o "Profesor", ayúdale a saber qué libros tiene, fechas de vencimiento y cómo devolver.
 6. NUNCA inventes información que no esté en el catálogo o en el contexto del usuario.
-7. Responde con Markdown para que se vea bien en el chat (usa negritas, listas, etc.). Mantén tus respuestas cortas y al grano (máximo 2-3 párrafos).
+7. Responde con Markdown. Mantén tus respuestas cortas y al grano (máximo 2-3 párrafos).
     `;
 
-    const chat = model.startChat({
-      history: [
-        {
-          role: 'user',
-          parts: [{ text: systemPrompt }]
-        },
-        {
-          role: 'model',
-          parts: [{ text: 'Entendido. Soy Ducky, el Asistente de la Biblioteca Ducky University. Tengo acceso al catálogo actualizado y estoy listo para ayudar.' }]
-        },
-        ...(history || []).map(msg => ({
-          role: msg.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: msg.content }]
-        }))
-      ],
-      generationConfig: {
-        maxOutputTokens: 1000,
-        temperature: 0.7,
-      },
-    });
+    const chatHistory = [
+      { role: 'user', parts: [{ text: systemPrompt }] },
+      { role: 'model', parts: [{ text: 'Entendido. Soy Ducky, el Asistente de la Biblioteca Ducky University. Tengo acceso al catálogo actualizado y estoy listo para ayudar.' }] },
+      ...(history || []).map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      }))
+    ];
 
-    const result = await chat.sendMessage(message);
-    const response = await result.response;
-    const text = response.text();
+    const generationConfig = { maxOutputTokens: 1000, temperature: 0.7 };
 
-    res.json({ reply: text });
+    // Try each model in the chain until one works
+    let lastError = null;
+    for (const modelName of MODEL_CHAIN) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const chat = model.startChat({ history: chatHistory, generationConfig });
+        const result = await chat.sendMessage(message);
+        const text = result.response.text();
+        return res.json({ reply: text });
+      } catch (modelError) {
+        console.warn(`Model ${modelName} failed: ${modelError.message}`);
+        lastError = modelError;
+        // Only retry on 503 (overloaded) or 429 (rate limit)
+        if (!modelError.message?.includes('503') && !modelError.message?.includes('429') && !modelError.message?.includes('overloaded')) {
+          break;
+        }
+      }
+    }
+
+    throw lastError;
 
   } catch (error) {
     console.error('Error in chat route:', error);
