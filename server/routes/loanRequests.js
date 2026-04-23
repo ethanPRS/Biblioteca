@@ -1,59 +1,50 @@
 import express from 'express';
-import db from '../db/database.js';
+import supabase from '../db/supabase.js';
 
 const router = express.Router();
 
-// Get all loan requests
-router.get('/', (req, res) => {
+// GET all loan requests
+router.get('/', async (req, res) => {
   try {
-    const rows = db.prepare(`
-      SELECT 
-        id_lista_espera as id, 
-        id_libro as bookId, 
-        id_usuario as userId, 
-        fecha_registro as requestDate, 
-        estatus as status 
-      FROM LISTA_ESPERA 
-      ORDER BY fecha_registro DESC
-    `).all();
-    
-    res.json(rows.map(r => ({
-      ...r,
-      id: String(r.id),
-      userId: String(r.userId)
+    const { data, error } = await supabase
+      .from('lista_espera')
+      .select('id_lista_espera, id_libro, id_usuario, fecha_registro, estatus')
+      .order('fecha_registro', { ascending: false });
+    if (error) throw error;
+    res.json(data.map(r => ({
+      id: String(r.id_lista_espera),
+      bookId: r.id_libro,
+      userId: String(r.id_usuario),
+      requestDate: r.fecha_registro,
+      status: r.estatus,
     })));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Create a new loan request
-router.post('/', (req, res) => {
+// POST create loan request
+router.post('/', async (req, res) => {
   const { bookId, userId, requestDate, status } = req.body;
   try {
-    const result = db.prepare(`
-      INSERT INTO LISTA_ESPERA (id_usuario, id_libro, fecha_registro, estatus)
-      VALUES (?, ?, ?, ?)
-    `).run(userId, bookId, requestDate, status || 'Pendiente');
-
-    res.status(201).json({ 
-      id: String(result.lastInsertRowid), 
-      bookId, 
-      userId, 
-      requestDate, 
-      status: status || 'Pendiente' 
-    });
+    const { data, error } = await supabase
+      .from('lista_espera')
+      .insert({ id_usuario: userId, id_libro: bookId, fecha_registro: requestDate, estatus: status || 'Pendiente' })
+      .select().single();
+    if (error) throw error;
+    res.status(201).json({ id: String(data.id_lista_espera), bookId, userId, requestDate, status: status || 'Pendiente' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Update a loan request (e.g. approve or reject)
-router.put('/:id', (req, res) => {
+// PUT update loan request
+router.put('/:id', async (req, res) => {
   const { status } = req.body;
   try {
     if (status) {
-      db.prepare(`UPDATE LISTA_ESPERA SET estatus = ? WHERE id_lista_espera = ?`).run(status, req.params.id);
+      const { error } = await supabase.from('lista_espera').update({ estatus: status }).eq('id_lista_espera', req.params.id);
+      if (error) throw error;
     }
     res.json({ id: req.params.id, ...req.body });
   } catch (error) {

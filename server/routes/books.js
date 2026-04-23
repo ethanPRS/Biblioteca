@@ -1,47 +1,48 @@
 import express from 'express';
-import db from '../db/database.js';
+import supabase from '../db/supabase.js';
 
 const router = express.Router();
 
 // GET all books with their available copies count
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const books = db.prepare(`
-      SELECT 
-        L.id_libro as id,
-        L.titulo as title,
-        L.autor as author,
-        L.foto as cover,
-        (
-          SELECT U2.seccion 
-          FROM EJEMPLAR E2 
-          JOIN UBICACION U2 ON E2.id_ubicacion = U2.id_ubicacion 
-          WHERE E2.id_libro = L.id_libro 
-          LIMIT 1
-        ) as category,
-        CASE 
-          WHEN (SELECT COUNT(*) FROM EJEMPLAR E2 WHERE E2.id_libro = L.id_libro AND E2.estatus = 'Disponible') > 0 THEN 'Disponible' 
-          ELSE 'Prestado' 
-        END as status,
-        (
-          SELECT U2.estanteria 
-          FROM EJEMPLAR E2 
-          JOIN UBICACION U2 ON E2.id_ubicacion = U2.id_ubicacion 
-          WHERE E2.id_libro = L.id_libro 
-          LIMIT 1
-        ) as location,
-        L.isbn,
-        L.editorial_clave as editorial,
-        L.edicion as edition,
-        L.precio as price,
-        L.sinopsis as synopsis,
-        L.formato as format,
-        L.estatus_catalogo as availabilityStatus,
-        (SELECT COUNT(*) FROM EJEMPLAR E2 WHERE E2.id_libro = L.id_libro) as totalCopies,
-        (SELECT COUNT(*) FROM EJEMPLAR E2 WHERE E2.id_libro = L.id_libro AND E2.estatus = 'Disponible') as availableCopies
-      FROM LIBRO L
-      GROUP BY L.id_libro
-    `).all();
+    const { data: libros, error } = await supabase
+      .from('libro')
+      .select(`
+        id_libro, titulo, autor, foto, isbn,
+        editorial_clave, edicion, precio, sinopsis, formato, estatus_catalogo,
+        ejemplar (
+          id_ejemplar, estatus,
+          ubicacion ( seccion, estanteria )
+        )
+      `);
+
+    if (error) throw error;
+
+    const books = libros.map(l => {
+      const copies = l.ejemplar || [];
+      const availableCopies = copies.filter(e => e.estatus === 'Disponible').length;
+      const firstCopy = copies[0];
+      return {
+        id: l.id_libro,
+        title: l.titulo,
+        author: l.autor,
+        cover: l.foto,
+        category: firstCopy?.ubicacion?.seccion || 'N/A',
+        status: availableCopies > 0 ? 'Disponible' : 'Prestado',
+        location: firstCopy?.ubicacion?.estanteria || 'N/A',
+        isbn: l.isbn,
+        editorial: l.editorial_clave,
+        edition: l.edicion,
+        price: l.precio,
+        synopsis: l.sinopsis,
+        format: l.formato,
+        availabilityStatus: l.estatus_catalogo,
+        totalCopies: copies.length,
+        availableCopies,
+      };
+    });
+
     res.json(books);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -49,118 +50,153 @@ router.get('/', (req, res) => {
 });
 
 // POST a new book
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const b = req.body;
-  
   try {
-    db.transaction(() => {
-      const insert = db.prepare(`
-        INSERT INTO LIBRO (titulo, autor, editorial_clave, edicion, precio, sinopsis, formato, estatus_catalogo, isbn, foto)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      
-      const result = insert.run(
-        b.title, 
-        b.author, 
-        b.editorial || '', 
-        b.edition || '', 
-        b.price || 0, 
-        b.synopsis || '', 
-        b.format || 'Físico', 
-        b.availabilityStatus || 'Disponible para préstamo a casa', 
-        b.isbn || '', 
-        b.cover || ''
-      );
-      
-      const bookId = result.lastInsertRowid;
-      
-      // Manage Ubicacion (Category & Location)
-      let ub = db.prepare('SELECT id_ubicacion FROM UBICACION WHERE estanteria = ? AND seccion = ?').get(b.location || 'N/A', b.category || 'N/A');
-      if (!ub) {
-         const uRes = db.prepare('INSERT INTO UBICACION (estanteria, seccion, codigo_clasificacion) VALUES (?, ?, ?)').run(b.location || 'N/A', b.category || 'N/A', 'N/A');
-         ub = { id_ubicacion: uRes.lastInsertRowid };
-      }
+    // Insert libro
+    const { data: libro, error: libroErr } = await supabase
+      .from('libro')
+      .insert({
+        titulo: b.title,
+        autor: b.author,
+        editorial_clave: b.editorial || '',
+        edicion: b.edition || '',
+        precio: b.price || 0,
+        sinopsis: b.synopsis || '',
+        formato: b.format || 'Físico',
+        estatus_catalogo: b.availabilityStatus || 'Disponible para préstamo a casa',
+        isbn: b.isbn || '',
+        foto: b.cover || '',
+      })
+      .select()
+      .single();
 
-      // Manage Copies via EJEMPLAR
-      const totalCopies = parseInt(b.totalCopies) || 1;
-      const insertEj = db.prepare('INSERT INTO EJEMPLAR (id_libro, id_ubicacion, codigo_inventario, tipo_disponibilidad, estatus) VALUES (?, ?, ?, ?, ?)');
-      for (let i = 0; i < totalCopies; i++) {
-          insertEj.run(bookId, ub.id_ubicacion, `INV-${bookId}-${Date.now()}-${i}`, 'Préstamo a casa', 'Disponible');
-      }
+    if (libroErr) throw libroErr;
+    const bookId = libro.id_libro;
 
-      res.status(201).json({ id: bookId, ...b });
-    })();
+    // Manage Ubicacion
+    let { data: ub } = await supabase
+      .from('ubicacion')
+      .select('id_ubicacion')
+      .eq('estanteria', b.location || 'N/A')
+      .eq('seccion', b.category || 'N/A')
+      .single();
+
+    if (!ub) {
+      const { data: newUb, error: ubErr } = await supabase
+        .from('ubicacion')
+        .insert({ estanteria: b.location || 'N/A', seccion: b.category || 'N/A', codigo_clasificacion: 'N/A' })
+        .select()
+        .single();
+      if (ubErr) throw ubErr;
+      ub = newUb;
+    }
+
+    // Insert Ejemplares
+    const totalCopies = parseInt(b.totalCopies) || 1;
+    const ejemplares = Array.from({ length: totalCopies }, (_, i) => ({
+      id_libro: bookId,
+      id_ubicacion: ub.id_ubicacion,
+      codigo_inventario: `INV-${bookId}-${Date.now()}-${i}`,
+      tipo_disponibilidad: 'Préstamo a casa',
+      estatus: 'Disponible',
+    }));
+
+    const { error: ejErr } = await supabase.from('ejemplar').insert(ejemplares);
+    if (ejErr) throw ejErr;
+
+    res.status(201).json({ id: bookId, ...b });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // PUT update a book
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const b = req.body;
   const id = req.params.id;
-
   try {
-    db.transaction(() => {
-      const update = db.prepare(`
-        UPDATE LIBRO SET 
-          titulo = ?, autor = ?, editorial_clave = ?, edicion = ?, 
-          precio = ?, sinopsis = ?, formato = ?, estatus_catalogo = ?, 
-          isbn = ?, foto = ?
-        WHERE id_libro = ?
-      `);
+    const { error: updateErr } = await supabase
+      .from('libro')
+      .update({
+        titulo: b.title,
+        autor: b.author,
+        editorial_clave: b.editorial,
+        edicion: b.edition,
+        precio: b.price,
+        sinopsis: b.synopsis,
+        formato: b.format,
+        estatus_catalogo: b.availabilityStatus,
+        isbn: b.isbn,
+        foto: b.cover,
+      })
+      .eq('id_libro', id);
 
-      update.run(
-        b.title, b.author, b.editorial, b.edition, 
-        b.price, b.synopsis, b.format, b.availabilityStatus, 
-        b.isbn, b.cover, id
-      );
+    if (updateErr) throw updateErr;
 
-      // Manage Ubicacion
-      let ub = db.prepare('SELECT id_ubicacion FROM UBICACION WHERE estanteria = ? AND seccion = ?').get(b.location || 'N/A', b.category || 'N/A');
-      if (!ub) {
-         const uRes = db.prepare('INSERT INTO UBICACION (estanteria, seccion, codigo_clasificacion) VALUES (?, ?, ?)').run(b.location || 'N/A', b.category || 'N/A', 'N/A');
-         ub = { id_ubicacion: uRes.lastInsertRowid };
+    // Manage Ubicacion
+    let { data: ub } = await supabase
+      .from('ubicacion')
+      .select('id_ubicacion')
+      .eq('estanteria', b.location || 'N/A')
+      .eq('seccion', b.category || 'N/A')
+      .single();
+
+    if (!ub) {
+      const { data: newUb, error: ubErr } = await supabase
+        .from('ubicacion')
+        .insert({ estanteria: b.location || 'N/A', seccion: b.category || 'N/A', codigo_clasificacion: 'N/A' })
+        .select()
+        .single();
+      if (ubErr) throw ubErr;
+      ub = newUb;
+    }
+
+    await supabase.from('ejemplar').update({ id_ubicacion: ub.id_ubicacion }).eq('id_libro', id);
+
+    // Adjust total copies
+    const { data: currentCopies } = await supabase
+      .from('ejemplar')
+      .select('id_ejemplar')
+      .eq('id_libro', id)
+      .order('id_ejemplar', { ascending: true });
+
+    const desiredCopies = parseInt(b.totalCopies) || 1;
+    const diff = desiredCopies - (currentCopies?.length || 0);
+
+    if (diff > 0) {
+      const newEj = Array.from({ length: diff }, (_, i) => ({
+        id_libro: id,
+        id_ubicacion: ub.id_ubicacion,
+        codigo_inventario: `INV-${id}-${Date.now()}-${i}`,
+        tipo_disponibilidad: 'Préstamo a casa',
+        estatus: 'Disponible',
+      }));
+      await supabase.from('ejemplar').insert(newEj);
+    } else if (diff < 0) {
+      const { data: toDelete } = await supabase
+        .from('ejemplar')
+        .select('id_ejemplar')
+        .eq('id_libro', id)
+        .eq('estatus', 'Disponible')
+        .order('id_ejemplar', { ascending: false })
+        .limit(Math.abs(diff));
+      if (toDelete?.length) {
+        await supabase.from('ejemplar').delete().in('id_ejemplar', toDelete.map(e => e.id_ejemplar));
       }
-      
-      // Sync Location for all existing copies of this book
-      db.prepare('UPDATE EJEMPLAR SET id_ubicacion = ? WHERE id_libro = ?').run(ub.id_ubicacion, id);
+    }
 
-      // Adjust total copies
-      const currentCopies = db.prepare('SELECT id_ejemplar FROM EJEMPLAR WHERE id_libro = ? ORDER BY id_ejemplar ASC').all(id);
-      const desiredCopies = parseInt(b.totalCopies) || 1;
-      
-      if (desiredCopies > currentCopies.length) {
-          const toAdd = desiredCopies - currentCopies.length;
-          const insertEj = db.prepare('INSERT INTO EJEMPLAR (id_libro, id_ubicacion, codigo_inventario, tipo_disponibilidad, estatus) VALUES (?, ?, ?, ?, ?)');
-          for (let i = 0; i < toAdd; i++) {
-              insertEj.run(id, ub.id_ubicacion, `INV-${id}-${Date.now()}-${i}`, 'Préstamo a casa', 'Disponible');
-          }
-      } else if (desiredCopies < currentCopies.length) {
-          const toRemove = currentCopies.length - desiredCopies;
-          db.prepare(`
-              DELETE FROM EJEMPLAR 
-              WHERE id_ejemplar IN (
-                  SELECT id_ejemplar FROM EJEMPLAR 
-                  WHERE id_libro = ? AND estatus = 'Disponible'
-                  ORDER BY id_ejemplar DESC 
-                  LIMIT ?
-              )
-          `).run(id, toRemove);
-      }
-
-      res.json({ id: Number(id), ...b });
-    })();
+    res.json({ id: Number(id), ...b });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // DELETE a book
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const del = db.prepare('DELETE FROM LIBRO WHERE id_libro = ?');
-    del.run(req.params.id);
+    const { error } = await supabase.from('libro').delete().eq('id_libro', req.params.id);
+    if (error) throw error;
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });

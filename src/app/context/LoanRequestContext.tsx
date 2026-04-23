@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-const API_URL = 'http://localhost:5001/api/loanRequests';
+const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/loanRequests`;
 
 export interface LoanRequest {
   id: string;

@@ -1,31 +1,38 @@
 import express from 'express';
-import db from '../db/database.js';
+import supabase from '../db/supabase.js';
 
 const router = express.Router();
 
-// Get all audit logs
-router.get('/', (req, res) => {
+// GET all audit logs
+router.get('/', async (req, res) => {
   try {
-    const logs = db.prepare(`
-      SELECT a.*, u.nombre, u.matricula_nomina as username
-      FROM AUDITORIA a 
-      LEFT JOIN USUARIO u ON a.id_usuario = u.id_usuario 
-      ORDER BY a.fecha DESC 
-      LIMIT 100
-    `).all();
+    const { data, error } = await supabase
+      .from('auditoria')
+      .select('*, usuario ( nombre, matricula_nomina )')
+      .order('fecha', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    const logs = data.map(a => ({
+      ...a,
+      nombre: a.usuario?.nombre,
+      username: a.usuario?.matricula_nomina,
+    }));
     res.json(logs);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Create an audit log
-router.post('/', (req, res) => {
+// POST create audit log
+router.post('/', async (req, res) => {
   const { userId, action, type } = req.body;
   try {
-    const stmt = db.prepare('INSERT INTO AUDITORIA (id_usuario, accion, tipo, fecha) VALUES (?, ?, ?, ?)');
-    const info = stmt.run(userId, action, type, new Date().toISOString());
-    res.status(201).json({ id: info.lastInsertRowid, userId, action, type });
+    const { data, error } = await supabase
+      .from('auditoria')
+      .insert({ id_usuario: userId, accion: action, tipo: type, fecha: new Date().toISOString().split('T')[0] })
+      .select().single();
+    if (error) throw error;
+    res.status(201).json({ id: data.id_auditoria, userId, action, type });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

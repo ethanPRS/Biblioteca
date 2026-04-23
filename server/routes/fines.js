@@ -1,92 +1,94 @@
 import express from 'express';
-import db from '../db/database.js';
+import supabase from '../db/supabase.js';
 
 const router = express.Router();
 
-// GET all fines — enriched with loan + user + book info
-router.get('/', (req, res) => {
+// GET all fines
+router.get('/', async (req, res) => {
   try {
-    const fines = db.prepare(`
-      SELECT 
-        M.id_multa as id,
-        M.id_usuario as userId,
-        M.id_prestamo as loanId,
-        M.tipo as type,
-        M.monto as amount,
-        M.dias_retraso as daysOverdue,
-        M.estatus_pago as paymentStatus,
-        M.fecha_generacion as createdAt,
-        P.fecha_prestamo as borrowDate,
-        P.fecha_vencimiento as dueDate,
-        P.estatus as loanStatus,
-        E.id_libro as bookId
-      FROM MULTA M
-      LEFT JOIN PRESTAMO P ON M.id_prestamo = P.id_prestamo
-      LEFT JOIN EJEMPLAR E ON P.id_ejemplar = E.id_ejemplar
-      ORDER BY M.fecha_generacion DESC
-    `).all();
+    const { data, error } = await supabase
+      .from('multa')
+      .select(`id_multa, id_usuario, id_prestamo, tipo, monto, dias_retraso, estatus_pago, fecha_generacion,
+        prestamo ( fecha_prestamo, fecha_vencimiento, estatus, ejemplar ( id_libro ) )`)
+      .order('fecha_generacion', { ascending: false });
+    if (error) throw error;
+
+    const fines = data.map(m => ({
+      id: m.id_multa,
+      userId: m.id_usuario,
+      loanId: m.id_prestamo,
+      type: m.tipo,
+      amount: m.monto,
+      daysOverdue: m.dias_retraso,
+      paymentStatus: m.estatus_pago,
+      createdAt: m.fecha_generacion,
+      borrowDate: m.prestamo?.fecha_prestamo,
+      dueDate: m.prestamo?.fecha_vencimiento,
+      loanStatus: m.prestamo?.estatus,
+      bookId: m.prestamo?.ejemplar?.id_libro,
+    }));
     res.json(fines);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// POST generate fines for all overdue active loans (call periodically)
-router.post('/generate', (req, res) => {
+// POST generate fines for overdue loans
+router.post('/generate', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    // Find overdue loans without a pending/paid fine
-    const overdueLoans = db.prepare(`
-      SELECT P.id_prestamo, P.id_usuario, P.fecha_vencimiento,
-             CAST((julianday('now') - julianday(P.fecha_vencimiento)) AS INTEGER) as dias_retraso,
-             L.costo_multa_base
-      FROM PRESTAMO P
-      JOIN EJEMPLAR E ON P.id_ejemplar = E.id_ejemplar
-      JOIN LIBRO L ON E.id_libro = L.id_libro
-      WHERE P.estatus = 'Activo'
-        AND P.fecha_vencimiento < date('now')
-        AND P.id_prestamo NOT IN (SELECT id_prestamo FROM MULTA WHERE id_prestamo IS NOT NULL)
-    `).all();
+    const { data: finesWithLoans } = await supabase
+      .from('multa').select('id_prestamo').not('id_prestamo', 'is', null);
+    const loanIdsWithFines = finesWithLoans?.map(f => f.id_prestamo) || [];
 
-    const insertFine = db.prepare(`
-      INSERT INTO MULTA (id_usuario, id_prestamo, tipo, monto, dias_retraso, estatus_pago, fecha_generacion)
-      VALUES (?, ?, 'Retraso', ?, ?, 'Pendiente', ?)
-    `);
+    const { data: overdueLoans, error } = await supabase
+      .from('prestamo')
+      .select('id_prestamo, id_usuario, fecha_vencimiento, ejemplar ( libro ( costo_multa_base ) )')
+      .eq('estatus', 'Activo')
+      .lt('fecha_vencimiento', today);
+    if (error) throw error;
 
-    let created = 0;
-    const insertMany = db.transaction((loans) => {
-      for (const loan of loans) {
-        const monto = loan.dias_retraso * (loan.costo_multa_base || 10);
-        insertFine.run(loan.id_usuario, loan.id_prestamo, monto, loan.dias_retraso, today);
-        created++;
-      }
+    const toCreate = overdueLoans.filter(l => !loanIdsWithFines.includes(l.id_prestamo));
+
+    if (toCreate.length === 0) return res.json({ message: '0 multas generadas', count: 0 });
+
+    const inserts = toCreate.map(loan => {
+      const diasRetraso = Math.floor((new Date(today) - new Date(loan.fecha_vencimiento)) / 86400000);
+      const costoBase = loan.ejemplar?.libro?.costo_multa_base || 10;
+      return {
+        id_usuario: loan.id_usuario, id_prestamo: loan.id_prestamo,
+        tipo: 'Retraso', monto: diasRetraso * costoBase,
+        dias_retraso: diasRetraso, estatus_pago: 'Pendiente', fecha_generacion: today,
+      };
     });
-    insertMany(overdueLoans);
 
-    res.json({ message: `${created} multas generadas`, count: created });
+    const { error: insertErr } = await supabase.from('multa').insert(inserts);
+    if (insertErr) throw insertErr;
+
+    res.json({ message: `${inserts.length} multas generadas`, count: inserts.length });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // PUT pay / forgive a fine
-router.put('/:id', (req, res) => {
-  const { paymentStatus } = req.body; // 'Pagada' | 'Condonada'
+router.put('/:id', async (req, res) => {
+  const { paymentStatus } = req.body;
   try {
-    db.prepare(`
-      UPDATE MULTA SET estatus_pago = ? WHERE id_multa = ?
-    `).run(paymentStatus, req.params.id);
+    const { error } = await supabase.from('multa').update({ estatus_pago: paymentStatus }).eq('id_multa', req.params.id);
+    if (error) throw error;
     res.json({ id: req.params.id, paymentStatus });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// DELETE a fine (admin only)
-router.delete('/:id', (req, res) => {
+// DELETE a fine
+router.delete('/:id', async (req, res) => {
   try {
-    db.prepare('DELETE FROM MULTA WHERE id_multa = ?').run(req.params.id);
+    const { error } = await supabase.from('multa').delete().eq('id_multa', req.params.id);
+    if (error) throw error;
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });
