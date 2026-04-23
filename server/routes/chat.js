@@ -33,7 +33,7 @@ async function fetchBookCatalog() {
 }
 
 // Models to try in order — fallback if one is overloaded
-const MODEL_CHAIN = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+const MODEL_CHAIN = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash'];
 
 router.post('/', async (req, res) => {
   try {
