@@ -1,52 +1,88 @@
 import express from 'express';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import supabase from '../db/supabase.js';
 
 const router = express.Router();
+
+// Helper: fetch real-time book catalog from Supabase
+async function fetchBookCatalog() {
+  const { data: libros, error } = await supabase
+    .from('libro')
+    .select(`
+      titulo, autor, editorial_clave, edicion, formato, estatus_catalogo, isbn,
+      ejemplar ( estatus )
+    `);
+
+  if (error || !libros) return 'No se pudo obtener el catálogo de libros.';
+
+  const lines = libros.map(l => {
+    const copies = l.ejemplar || [];
+    const total = copies.length;
+    const available = copies.filter(e => e.estatus === 'Disponible').length;
+
+    let statusTag = '';
+    if (l.estatus_catalogo === 'Dado de baja') {
+      statusTag = '🚫 Dado de baja';
+    } else if (available > 0) {
+      statusTag = `✅ Disponible (${available}/${total} ejemplares)`;
+    } else {
+      statusTag = `❌ No disponible (0/${total} ejemplares)`;
+    }
+
+    return `• "${l.titulo}" — ${l.autor} | ${l.editorial_clave}, ${l.edicion} | Formato: ${l.formato} | ${statusTag}`;
+  });
+
+  return lines.join('\n');
+}
 
 router.post('/', async (req, res) => {
   try {
     const { message, history, context } = req.body;
-    
-    // Configura tu API key en el archivo .env
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ 
-        error: "Falta configurar GEMINI_API_KEY en el servidor." 
-      });
+      return res.status(500).json({ error: 'Falta configurar GEMINI_API_KEY en el servidor.' });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // We use gemini-2.5-flash as the user's key supports it natively
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Fetch real-time book catalog from Supabase
+    const bookCatalog = await fetchBookCatalog();
 
-    // Build the system prompt using the metadata passed from the frontend
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
     const systemPrompt = `
-      Eres el Asistente Virtual Oficial de la biblioteca "Ducky University".
-      Tu tono debe ser súper amable, profesional, conciso y muy enfocado en resolver dudas sobre libros, biblioteca, préstamos y multas.
-      
-      Datos del usuario actual:
-      Nombre: ${context?.name || 'Usuario'}
-      Rol: ${context?.role || 'Desconocido'}
-      Préstamos Activos: ${context?.activeLoans || 0}
-      Multas Pendientes: ${context?.pendingFines || '$0.00'}
-      
-      Reglas:
-      1. Háblale por su nombre amigablemente.
-      2. Si el rol es "Administrador" o "Bibliotecario", puedes ayudar diciéndole cómo realizar gestiones (cómo agregar libros en la sección "Gestión de Libros", revisar multas, etc).
-      3. Si el rol es "Alumno" o "Profesor", ayúdale a saber qué libros tiene, fechas de vencimiento y cómo hacer la devolución.
-      4. NUNCA inventes información de la base de datos si no la tienes en tu contexto. 
-      5. Responde con Markdown para que se vea bien en el chat (usa negritas, listas, etc.). Manten tus respuestas cortas y al grano (máximo 2-3 párrafos).
+Eres el Asistente Virtual Oficial de la biblioteca "Ducky University".
+Tu tono debe ser súper amable, profesional, conciso y muy enfocado en resolver dudas sobre libros, biblioteca, préstamos y multas.
+
+Datos del usuario actual:
+Nombre: ${context?.name || 'Usuario'}
+Rol: ${context?.role || 'Desconocido'}
+Préstamos Activos: ${context?.activeLoans || 0}
+Multas Pendientes: ${context?.pendingFines || '$0.00'}
+
+=== CATÁLOGO ACTUAL DE LIBROS EN LA BIBLIOTECA ===
+${bookCatalog}
+===================================================
+
+Reglas:
+1. Háblale por su nombre amigablemente.
+2. Usa el catálogo de arriba para responder preguntas sobre disponibilidad de libros. Es información en tiempo real.
+3. Si preguntan por un libro específico, busca en el catálogo y responde con precisión (disponible, prestado, dado de baja, etc.).
+4. Si el rol es "Administrador" o "Bibliotecario", puedes ayudar diciéndole cómo realizar gestiones (agregar libros, revisar multas, etc.).
+5. Si el rol es "Alumno" o "Profesor", ayúdale a saber qué libros tiene, fechas de vencimiento y cómo hacer la devolución.
+6. NUNCA inventes información que no esté en el catálogo o en el contexto del usuario.
+7. Responde con Markdown para que se vea bien en el chat (usa negritas, listas, etc.). Mantén tus respuestas cortas y al grano (máximo 2-3 párrafos).
     `;
 
     const chat = model.startChat({
       history: [
         {
-          role: "user",
+          role: 'user',
           parts: [{ text: systemPrompt }]
         },
         {
-          role: "model",
-          parts: [{ text: "Entendido. Soy el Asistente de Ducky University. Estoy listo para ayudar al usuario con su rol y contexto actual." }]
+          role: 'model',
+          parts: [{ text: 'Entendido. Soy Ducky, el Asistente de la Biblioteca Ducky University. Tengo acceso al catálogo actualizado y estoy listo para ayudar.' }]
         },
         ...(history || []).map(msg => ({
           role: msg.role === 'assistant' ? 'model' : 'user',
@@ -67,7 +103,7 @@ router.post('/', async (req, res) => {
 
   } catch (error) {
     console.error('Error in chat route:', error);
-    res.status(500).json({ error: "Ocurrió un error al contactar al asistente inteligente.", details: error.message });
+    res.status(500).json({ error: 'Ocurrió un error al contactar al asistente inteligente.', details: error.message });
   }
 });
 
