@@ -124,7 +124,7 @@ export function ChatWidget() {
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "Lo siento, no pude conectarme con el asistente inteligente. Por favor, intenta de nuevo más tarde.",
+        content: "⚠️ El asistente está temporalmente no disponible. Puede deberse a alta demanda o límite de solicitudes. Por favor intenta de nuevo en unos minutos.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMsg]);
