@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useRealtimeSubscription } from '../hooks/useRealtimeSubscription';
 
 export type Role = 'Administrador' | 'Bibliotecario' | 'Alumno' | 'Profesor' | 'Colaborador';
 
@@ -75,12 +76,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [rolePermissions, setRolePermissions] = useState<RolePermissions>(INITIAL_ROLE_PERMISSIONS);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setIsLoadingUsers(true);
       const res = await fetch(API_URL);
@@ -93,7 +91,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoadingUsers(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // Debounced refetch for realtime updates
+  const debouncedRefetch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchUsers();
+    }, 500);
+  }, [fetchUsers]);
+
+  // Subscribe to real-time changes on users domain
+  useRealtimeSubscription(['users'], debouncedRefetch);
 
   const login = async (username: string, pass: string) => {
     try {

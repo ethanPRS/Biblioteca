@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
+import { useRealtimeSubscription } from '../hooks/useRealtimeSubscription';
 
 export interface AuditLog {
   id_auditoria: number;
@@ -22,10 +23,11 @@ const AuditLogContext = createContext<AuditLogContextType | null>(null);
 export function AuditLogProvider({ children }: { children: React.ReactNode }) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const { user } = useAuth();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/audit`;
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       const response = await fetch(API_URL);
       if (response.ok) {
@@ -35,7 +37,7 @@ export function AuditLogProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error fetching logs:', error);
     }
-  };
+  }, [API_URL]);
 
   const addLog = async (action: string, type: string) => {
     if (!user) return; // Cannot log anonymously
@@ -57,7 +59,20 @@ export function AuditLogProvider({ children }: { children: React.ReactNode }) {
     if (user?.role === 'Administrador' || user?.role === 'Bibliotecario') {
       fetchLogs();
     }
-  }, [user]);
+  }, [user, fetchLogs]);
+
+  // Debounced refetch for realtime updates
+  const debouncedRefetch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (user?.role === 'Administrador' || user?.role === 'Bibliotecario') {
+        fetchLogs();
+      }
+    }, 500);
+  }, [fetchLogs, user]);
+
+  // Subscribe to real-time changes on audit domain
+  useRealtimeSubscription(['audit'], debouncedRefetch);
 
   return (
     <AuditLogContext.Provider value={{ logs, addLog, fetchLogs }}>

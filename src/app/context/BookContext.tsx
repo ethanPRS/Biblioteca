@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useRealtimeSubscription } from '../hooks/useRealtimeSubscription';
 
 export interface Book {
   id: number;
@@ -38,13 +39,9 @@ const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/
 export function BookProvider({ children }: { children: React.ReactNode }) {
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load books from backend on mount
-  useEffect(() => {
-    fetchBooks();
-  }, []);
-
-  const fetchBooks = async () => {
+  const fetchBooks = useCallback(async () => {
     try {
       setIsLoading(true);
       const res = await fetch(API_URL);
@@ -57,7 +54,23 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Load books from backend on mount
+  useEffect(() => {
+    fetchBooks();
+  }, [fetchBooks]);
+
+  // Debounced refetch to avoid excessive API calls from rapid changes
+  const debouncedRefetch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchBooks();
+    }, 500);
+  }, [fetchBooks]);
+
+  // Subscribe to real-time changes on books domain
+  useRealtimeSubscription(['books'], debouncedRefetch);
 
   const addBook = async (newBook: Omit<Book, 'id'>) => {
     try {

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useRealtimeSubscription } from '../hooks/useRealtimeSubscription';
 
 export interface Loan {
   id: string;
@@ -26,12 +27,9 @@ const LoanContext = createContext<LoanContextType | null>(null);
 export function LoanProvider({ children }: { children: React.ReactNode }) {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    fetchLoans();
-  }, []);
-
-  const fetchLoans = async () => {
+  const fetchLoans = useCallback(async () => {
     try {
       setIsLoading(true);
       const res = await fetch(API_URL);
@@ -44,7 +42,22 @@ export function LoanProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchLoans();
+  }, [fetchLoans]);
+
+  // Debounced refetch for realtime updates
+  const debouncedRefetch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchLoans();
+    }, 500);
+  }, [fetchLoans]);
+
+  // Subscribe to real-time changes on loans domain
+  useRealtimeSubscription(['loans'], debouncedRefetch);
 
   const addLoan = async (newLoan: Omit<Loan, 'id'>) => {
     try {

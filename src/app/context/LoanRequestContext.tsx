@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useRealtimeSubscription } from '../hooks/useRealtimeSubscription';
 
 const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/loanRequests`;
 
@@ -23,8 +24,9 @@ const LoanRequestContext = createContext<LoanRequestContextType | null>(null);
 
 export function LoanRequestProvider({ children }: { children: React.ReactNode }) {
   const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchLoanRequests = async () => {
+  const fetchLoanRequests = useCallback(async () => {
     try {
       const res = await fetch(API_URL);
       if (res.ok) {
@@ -34,11 +36,22 @@ export function LoanRequestProvider({ children }: { children: React.ReactNode })
     } catch (error) {
       console.error('Error fetching loan requests:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchLoanRequests();
-  }, []);
+  }, [fetchLoanRequests]);
+
+  // Debounced refetch for realtime updates
+  const debouncedRefetch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchLoanRequests();
+    }, 500);
+  }, [fetchLoanRequests]);
+
+  // Subscribe to real-time changes on loanRequests domain
+  useRealtimeSubscription(['loanRequests'], debouncedRefetch);
 
   const addLoanRequest = async (newRequest: Omit<LoanRequest, 'id'>) => {
     try {
