@@ -14,7 +14,7 @@ import { useSettings } from '../context/SettingsContext';
 export function LoansAndReturns() {
   const { user: currentUser, users } = useAuth();
   const { settings } = useSettings();
-  const { books, updateBook } = useBooks();
+  const { books } = useBooks();
   const { loans, addLoan, updateLoan } = useLoans();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -141,19 +141,14 @@ export function LoansAndReturns() {
     window.dispatchEvent(new CustomEvent('loan-created', { detail: { bookTitle: book.title, userName: selectedUser?.name || 'Usuario' } }));
   };
 
-  const handleReturn = (loan: Loan) => {
+  const handleReturn = async (loan: Loan) => {
     const book = books.find(b => b.id === loan.bookId);
     const loanUser = users.find(u => u.id === loan.userId);
     if (!book) return;
 
-    updateLoan(loan.id, { status: 'Devuelto' });
-
-    // Devolver copias
-    const newAvailable = book.availableCopies + 1;
-    updateBook(book.id, { 
-      availableCopies: newAvailable, 
-      status: 'Disponible'
-    });
+    // The backend handles marking the exemplar as 'Disponible' automatically
+    // when status is set to 'Devuelto' — no need to call updateBook separately.
+    await updateLoan(loan.id, { status: 'Devuelto' });
 
     toast.success("Devolución registrada con éxito");
     window.dispatchEvent(new CustomEvent('loan-returned', { detail: { bookTitle: book.title, userName: loanUser?.name || 'Usuario' } }));

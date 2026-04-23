@@ -53,7 +53,7 @@ export function LoanProvider({ children }: { children: React.ReactNode }) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchLoans();
-    }, 500);
+    }, 200);
   }, [fetchLoans]);
 
   // Subscribe to real-time changes on loans domain

@@ -66,7 +66,7 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchBooks();
-    }, 500);
+    }, 200);
   }, [fetchBooks]);
 
   // Subscribe to real-time changes on books domain
