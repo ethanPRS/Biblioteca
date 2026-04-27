@@ -132,11 +132,6 @@ export function LoansAndReturns() {
       status: 'Activo'
     });
 
-    // Actualizar copias disponibles
-    const newAvailable = book.availableCopies - 1;
-    const newStatus = newAvailable === 0 ? 'Prestado' : 'Disponible';
-    updateBook(book.id, { availableCopies: newAvailable, status: newStatus });
-
     setIsModalOpen(false);
 
     toast.success('Préstamo registrado con éxito');

@@ -15,7 +15,7 @@ import { useNotifications } from '../context/NotificationContext';
 
 export function LoanRequests() {
   const { user: currentUser, users } = useAuth();
-  const { books, updateBook } = useBooks();
+  const { books } = useBooks();
   const { loanRequests, updateLoanRequest } = useLoanRequests();
   const { loans, addLoan } = useLoans();
   const { settings } = useSettings();
@@ -63,11 +63,6 @@ export function LoanRequests() {
       dueDate,
       status: 'Activo'
     });
-
-    // Actualizar libro
-    const newAvailable = book.availableCopies - 1;
-    const newStatus = newAvailable === 0 ? 'Prestado' : 'Disponible';
-    updateBook(book.id, { availableCopies: newAvailable, status: newStatus });
 
     // Actualizar solicitud
     updateLoanRequest(request.id, {

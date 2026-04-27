@@ -20,7 +20,7 @@ export function Catalog() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   const { user, users } = useAuth();
-  const { books, updateBook } = useBooks();
+  const { books } = useBooks();
   const { loans, addLoan } = useLoans();
   const { loanRequests, addLoanRequest } = useLoanRequests();
   const { settings } = useSettings();
@@ -67,13 +67,8 @@ export function Catalog() {
         dueDate,
         status: 'Activo'
       });
-      
-      const newAvailable = selectedBook.availableCopies - 1;
-      const newStatus = newAvailable === 0 ? 'Prestado' : 'Disponible';
-      
-      updateBook(selectedBook.id, { availableCopies: newAvailable, status: newStatus });
-      setSelectedBook({ ...selectedBook, availableCopies: newAvailable, status: newStatus });
-      
+
+      setSelectedBook(null);
       toast.success('Préstamo registrado exitosamente');
     } else {
       // Usuario regular crea una solicitud
