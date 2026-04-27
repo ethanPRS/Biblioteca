@@ -10,12 +10,14 @@ import { useAuth } from '../context/AuthContext';
 import { useBooks, Book } from '../context/BookContext';
 import { useLoans, Loan } from '../context/LoanContext';
 import { useSettings } from '../context/SettingsContext';
+import { useFines } from '../context/FinesContext';
 
 export function MyBooks() {
   const { user } = useAuth();
   const { books } = useBooks();
   const { loans } = useLoans();
   const { settings } = useSettings();
+  const { fines } = useFines();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Get only this user's active loans
@@ -45,13 +47,16 @@ export function MyBooks() {
     const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (daysOverdue > 0) {
+      // Use the recorded fine amount from DB; fall back to dynamic calculation if not yet registered
+      const fineRecord = fines.find(f => f.loanId === loan.id && f.paymentStatus === 'Pendiente');
+      const fineAmount = fineRecord ? fineRecord.amount : daysOverdue * settings.dailyFineAmount;
       return {
         label: `Vencido hace ${daysOverdue} ${daysOverdue === 1 ? 'día' : 'días'}`,
         type: 'overdue' as const,
         color: 'bg-red-100 text-red-700',
         borderColor: 'border-red-200',
         iconColor: 'text-red-500',
-        fine: daysOverdue * settings.dailyFineAmount,
+        fine: fineAmount,
         daysRemaining: -daysOverdue,
       };
     } else if (daysOverdue === 0) {

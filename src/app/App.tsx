@@ -7,6 +7,7 @@ import { LoanRequestProvider } from './context/LoanRequestContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { AuditLogProvider } from './context/AuditLogContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { FinesProvider } from './context/FinesContext';
 import { Toaster } from 'sonner';
 
 function App() {
@@ -18,8 +19,10 @@ function App() {
             <LoanProvider>
               <LoanRequestProvider>
                 <NotificationProvider>
-                  <RouterProvider router={router} />
-                  <Toaster position="top-right" richColors />
+                  <FinesProvider>
+                    <RouterProvider router={router} />
+                    <Toaster position="top-right" richColors />
+                  </FinesProvider>
                 </NotificationProvider>
               </LoanRequestProvider>
             </LoanProvider>

@@ -7,76 +7,52 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { NotificationBell } from './NotificationBell';
 import { useAuth } from '../context/AuthContext';
 import { useBooks } from '../context/BookContext';
-import { useLoans, Loan } from '../context/LoanContext';
-import { useSettings } from '../context/SettingsContext';
+import { useLoans } from '../context/LoanContext';
+import { useFines } from '../context/FinesContext';
 import { toast } from 'sonner';
 
 export function FinesManagement() {
   const { user: currentUser, users } = useAuth();
-  const { settings } = useSettings();
   const { books } = useBooks();
-  const { loans, updateLoan } = useLoans();
-  
+  const { updateLoan } = useLoans();
+  const { fines } = useFines();
+
   const [searchQuery, setSearchQuery] = useState('');
 
   const isAdmin = currentUser?.role === 'Administrador' || currentUser?.role === 'Bibliotecario';
 
-  // Obtener préstamos con multas (fecha de vencimiento anterior a hoy)
-  const todayDate = new Date();
-  todayDate.setHours(0, 0, 0, 0);
-
-  const loansWithFines = loans.filter(loan => {
-    const dueDate = new Date(loan.dueDate);
-    dueDate.setHours(0, 0, 0, 0);
-    return dueDate < todayDate;
-  });
-
   // Filtrar multas visibles (Admin ve todas, Usuario ve solo las suyas)
-  const visibleFines = isAdmin 
-    ? loansWithFines 
-    : loansWithFines.filter(l => l.userId === currentUser?.id);
+  const visibleFines = isAdmin
+    ? fines
+    : fines.filter(f => f.userId === currentUser?.id);
 
-  // Filtramos por búsqueda (nombre del libro o usuario)
-  const filteredFines = visibleFines.filter(loan => {
-    const loanUser = users.find(u => u.id === loan.userId);
-    const loanBook = books.find(b => b.id === loan.bookId);
-    
+  // Filtrar por búsqueda (nombre del libro o usuario)
+  const filteredFines = visibleFines.filter(fine => {
+    const fineUser = users.find(u => u.id === fine.userId);
+    const fineBook = books.find(b => b.id === fine.bookId);
     const searchLower = searchQuery.toLowerCase();
-    const userMatch = loanUser?.name.toLowerCase().includes(searchLower) || loanUser?.username.toLowerCase().includes(searchLower);
-    const bookMatch = loanBook?.title.toLowerCase().includes(searchLower);
-    
+    const userMatch = fineUser?.name.toLowerCase().includes(searchLower) || fineUser?.username.toLowerCase().includes(searchLower);
+    const bookMatch = fineBook?.title.toLowerCase().includes(searchLower);
     return userMatch || bookMatch;
   });
 
-  // Cálculo de resumen
+  // Totales desde la BD
   let totalPending = 0;
   let totalPaid = 0;
-  let pendingCount = 0;
 
-  const finesData = filteredFines.map(loan => {
-    const dueDate = new Date(loan.dueDate);
-    dueDate.setHours(0, 0, 0, 0);
-    const diffTime = todayDate.getTime() - dueDate.getTime();
-    const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    const amount = daysOverdue * settings.dailyFineAmount;
-    const isPaid = loan.finePaid === true;
+  for (const fine of filteredFines) {
+    if (fine.paymentStatus === 'Pendiente') totalPending += fine.amount;
+    else totalPaid += fine.amount;
+  }
 
-    if (!isPaid) {
-      totalPending += amount;
-      pendingCount++;
-    } else {
-      totalPaid += amount;
-    }
+  const finesData = filteredFines.map(fine => ({
+    fine,
+    daysOverdue: fine.daysOverdue,
+    amount: fine.amount,
+    isPaid: fine.paymentStatus !== 'Pendiente',
+  }));
 
-    return {
-      loan,
-      daysOverdue,
-      amount,
-      isPaid
-    };
-  });
-
+  // Marcar como pagada: actualiza la multa vía la ruta de préstamos
   const handlePayFine = (loanId: string) => {
     updateLoan(loanId, { finePaid: true });
   };
@@ -158,25 +134,25 @@ export function FinesManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 text-sm">
-                  {finesData.map(({ loan, daysOverdue, amount, isPaid }) => {
-                    const loanUser = users.find(u => u.id === loan.userId);
-                    const loanBook = books.find(b => b.id === loan.bookId);
+                  {finesData.map(({ fine, daysOverdue, amount, isPaid }) => {
+                    const fineUser = users.find(u => u.id === fine.userId);
+                    const fineBook = books.find(b => b.id === fine.bookId);
 
                     return (
-                      <tr key={loan.id} className="hover:bg-[#F8FAFC]/50 transition-colors group">
-                        
+                      <tr key={fine.id} className="hover:bg-[#F8FAFC]/50 transition-colors group">
+
                         {/* Usuario (Solo admin) */}
                         {isAdmin && (
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                              <ImageWithFallback 
-                                src={loanUser?.avatar || ''} 
-                                alt={loanUser?.name} 
-                                className="w-9 h-9 object-cover rounded-full shadow-sm border border-neutral-200 shrink-0 bg-neutral-100" 
+                              <ImageWithFallback
+                                src={fineUser?.avatar || ''}
+                                alt={fineUser?.name}
+                                className="w-9 h-9 object-cover rounded-full shadow-sm border border-neutral-200 shrink-0 bg-neutral-100"
                               />
                               <div>
-                                <p className="font-bold text-gray-900 leading-tight">{loanUser?.name || 'Usuario Eliminado'}</p>
-                                <p className="text-neutral-500 text-xs font-mono">{loanUser?.username}</p>
+                                <p className="font-bold text-gray-900 leading-tight">{fineUser?.name || 'Usuario Eliminado'}</p>
+                                <p className="text-neutral-500 text-xs font-mono">{fineUser?.username}</p>
                               </div>
                             </div>
                           </td>
@@ -185,11 +161,11 @@ export function FinesManagement() {
                         {/* Libro */}
                         <td className="px-6 py-4 max-w-[200px]">
                           <div className="flex flex-col">
-                            <p className="font-semibold text-gray-900 line-clamp-1 mb-0.5" title={loanBook?.title}>
-                              {loanBook?.title || 'Libro Eliminado'}
+                            <p className="font-semibold text-gray-900 line-clamp-1 mb-0.5" title={fineBook?.title}>
+                              {fineBook?.title || 'Libro Eliminado'}
                             </p>
                             <p className="text-xs text-neutral-400">
-                              Venció el {new Date(loan.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              Venció el {new Date(fine.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </p>
                           </div>
                         </td>
@@ -209,8 +185,7 @@ export function FinesManagement() {
                         {/* Estatus */}
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold
-                            ${isPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}
-                          `}>
+                            ${isPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                             {isPaid ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
                             {isPaid ? 'Pagada' : 'Pendiente'}
                           </span>
@@ -220,15 +195,15 @@ export function FinesManagement() {
                         <td className="px-6 py-4 text-right">
                           {!isPaid ? (
                             isAdmin ? (
-                              <button 
-                                onClick={() => handlePayFine(loan.id)}
+                              <button
+                                onClick={() => handlePayFine(fine.loanId)}
                                 className="inline-flex items-center gap-1.5 bg-[#2B74FF] hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
                               >
                                 <DollarSign className="w-3.5 h-3.5" />
                                 Pagar/Condonar
                               </button>
                             ) : (
-                              <button 
+                              <button
                                 onClick={() => {
                                   toast.info('Instrucciones de Pago', {
                                     description: `Dirígete físicamente a la biblioteca para saldar tu multa pendiente por la cantidad de $${amount.toFixed(2)} MXN a la brevedad posible.`,
