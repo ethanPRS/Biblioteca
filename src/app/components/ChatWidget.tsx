@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Bot, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLoans } from '../context/LoanContext';
+import { useSettings } from '../context/SettingsContext';
 
 interface ChatMessage {
   id: string;
@@ -19,6 +20,7 @@ export function ChatWidget() {
 
   const { user } = useAuth();
   const { loans } = useLoans();
+  const { settings } = useSettings();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,7 +59,7 @@ export function ChatWidget() {
       const diffTime = today.getTime() - dueDate.getTime();
       if (diffTime > 0) {
         const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        pendingFines += daysOverdue * 10; // Assuming $10 for context, though they can ask for specifics
+        pendingFines += daysOverdue * settings.dailyFineAmount;
       }
     });
 
