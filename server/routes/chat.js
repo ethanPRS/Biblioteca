@@ -32,32 +32,19 @@ async function fetchBookCatalog() {
   return lines.join('\n');
 }
 
-// Fetch pending fines total for a user directly from DB (same logic as FinesManagement)
-async function fetchPendingFines(userId, dailyFineAmount) {
+// Fetch pending fines total for a user from the multa table (uses stored monto, not recalculated)
+async function fetchPendingFines(userId) {
   if (!userId) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().split('T')[0];
 
-  const { data: loans, error } = await supabase
-    .from('prestamo')
-    .select('fecha_vencimiento, multa(estatus_pago)')
+  const { data: fines, error } = await supabase
+    .from('multa')
+    .select('monto')
     .eq('id_usuario', userId)
-    .lt('fecha_vencimiento', todayStr);
+    .eq('estatus_pago', 'Pendiente');
 
-  if (error || !loans) return null;
+  if (error || !fines) return null;
 
-  let total = 0;
-  for (const loan of loans) {
-    const isPaid = loan.multa?.some(m => m.estatus_pago === 'Pagada') ?? false;
-    if (!isPaid) {
-      const dueDate = new Date(loan.fecha_vencimiento);
-      dueDate.setHours(0, 0, 0, 0);
-      const daysOverdue = Math.ceil((today.getTime() - dueDate.getTime()) / 86400000);
-      total += daysOverdue * dailyFineAmount;
-    }
-  }
-  return total;
+  return fines.reduce((sum, f) => sum + (f.monto || 0), 0);
 }
 
 // Models to try in order — fallback if one is overloaded or quota-exhausted
@@ -72,10 +59,9 @@ router.post('/', async (req, res) => {
       return res.status(500).json({ error: 'Falta configurar GEMINI_API_KEY en el servidor.' });
     }
 
-    const dailyFineAmount = context?.dailyFineAmount ?? 10;
     const [bookCatalog, pendingFinesTotal] = await Promise.all([
       fetchBookCatalog(),
-      fetchPendingFines(context?.userId, dailyFineAmount),
+      fetchPendingFines(context?.userId),
     ]);
     const pendingFinesStr = pendingFinesTotal !== null
       ? `$${pendingFinesTotal.toFixed(2)} MXN`
