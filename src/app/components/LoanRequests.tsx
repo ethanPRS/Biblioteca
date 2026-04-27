@@ -76,10 +76,7 @@ export function LoanRequests() {
       reviewedBy: currentUser?.id
     });
 
-    const book = books.find(b => b.id === request.bookId);
-    const requestUser = users.find(u => u.id === request.userId);
-
-    // Notification for ALL users (loan activity)
+    // Notification for ALL users (loan activity) — reuse book & requestUser declared above
     addNotification({
       title: 'Solicitud Aprobada',
       message: `La solicitud de "${book?.title || 'libro'}" para ${requestUser?.name || 'un usuario'} fue aprobada.`,
