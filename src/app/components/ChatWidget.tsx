@@ -85,10 +85,10 @@ export function ChatWidget() {
     setIsLoading(true);
 
     try {
-      const history = messages.map(m => ({
-        role: m.role,
-        content: m.content
-      }));
+      // Exclude the local greeting (never sent to the API) to avoid consecutive model turns
+      const history = messages
+        .filter(m => m.id !== 'greeting')
+        .map(m => ({ role: m.role, content: m.content }));
 
       const context = calculateUserContext();
 
