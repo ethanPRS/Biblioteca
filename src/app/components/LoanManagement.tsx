@@ -12,7 +12,7 @@ import { useNotifications } from '../context/NotificationContext';
 
 export function LoanManagement() {
   const { user: currentUser, users } = useAuth();
-  const { books, updateBook } = useBooks();
+  const { books } = useBooks();
   const { loans, addLoan, updateLoan } = useLoans();
   const { addNotification } = useNotifications();
   
@@ -73,16 +73,7 @@ export function LoanManagement() {
       status: 'Activo'
     });
 
-    // Actualizar cantidad disponible del libro
-    const bookId = parseInt(formData.bookId);
-    const book = books.find(b => b.id === bookId);
-    if (book) {
-      const newAvailable = book.availableCopies - 1;
-      updateBook(bookId, { 
-        availableCopies: newAvailable,
-        status: newAvailable <= 0 ? 'Prestado' : 'Disponible'
-      });
-    }
+    // El backend actualiza automáticamente el estatus del ejemplar a 'Prestado' al crear el préstamo.
 
     // Persistent notification for ALL users
     const selectedUser = users.find(u => u.id === formData.userId);
@@ -98,17 +89,9 @@ export function LoanManagement() {
   };
 
   const handleReturn = (loan: Loan) => {
-    // Marcar préstamo como devuelto
+    // Marcar préstamo como devuelto.
+    // El backend actualiza automáticamente el estatus del ejemplar a 'Disponible'.
     updateLoan(loan.id, { status: 'Devuelto' });
-    
-    // Marcar libro como disponible y sumar copia
-    const book = books.find(b => b.id === loan.bookId);
-    if (book) {
-      updateBook(loan.bookId, { 
-        availableCopies: book.availableCopies + 1,
-        status: 'Disponible' 
-      });
-    }
   };
 
   return (

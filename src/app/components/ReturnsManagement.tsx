@@ -11,7 +11,7 @@ import { useLoans, Loan } from '../context/LoanContext';
 
 export function ReturnsManagement() {
   const { user: currentUser, users } = useAuth();
-  const { books, updateBook } = useBooks();
+  const { books } = useBooks();
   const { loans, updateLoan } = useLoans();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,17 +32,9 @@ export function ReturnsManagement() {
   });
 
   const handleReturn = (loan: Loan) => {
-    // 1. Marcar el préstamo como Devuelto
+    // Marcar el préstamo como Devuelto.
+    // El backend actualiza automáticamente el estatus del ejemplar a 'Disponible'.
     updateLoan(loan.id, { status: 'Devuelto' });
-    
-    // 2. Incrementar la cantidad disponible del libro
-    const book = books.find(b => b.id === loan.bookId);
-    if (book) {
-      updateBook(loan.bookId, { 
-        availableCopies: book.availableCopies + 1,
-        status: 'Disponible' 
-      });
-    }
   };
 
   // Función para calcular si un préstamo está vencido
