@@ -57,8 +57,8 @@ router.put('/:id', async (req, res) => {
   const { status, finePaid, returnDate, condition, notes } = req.body;
   const loanId = req.params.id;
   try {
-    if (status) await supabase.from('prestamo').update({ estatus: status }).eq('id_prestamo', loanId);
-
+    // For returns: update ejemplar and insert devolucion BEFORE updating prestamo status,
+    // so that when SSE fires for the prestamo change the exemplar is already Disponible.
     if (status === 'Devuelto') {
       const { data: loan } = await supabase.from('prestamo').select('id_ejemplar').eq('id_prestamo', loanId).single();
       if (loan) {
@@ -71,6 +71,8 @@ router.put('/:id', async (req, res) => {
         });
       }
     }
+
+    if (status) await supabase.from('prestamo').update({ estatus: status }).eq('id_prestamo', loanId);
 
     if (finePaid === true) {
       const { data: existing } = await supabase.from('multa').select('id_multa').eq('id_prestamo', loanId).single();

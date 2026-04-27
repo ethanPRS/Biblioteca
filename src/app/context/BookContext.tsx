@@ -69,8 +69,8 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
     }, 200);
   }, [fetchBooks]);
 
-  // Subscribe to real-time changes on books domain
-  useRealtimeSubscription(['books'], debouncedRefetch);
+  // Subscribe to books AND loans domains: ejemplar status changes when loans are created/returned
+  useRealtimeSubscription(['books', 'loans'], debouncedRefetch);
 
   const addBook = async (newBook: Omit<Book, 'id'>) => {
     try {
