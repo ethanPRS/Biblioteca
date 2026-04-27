@@ -17,7 +17,7 @@ const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/
 interface LoanContextType {
   loans: Loan[];
   isLoading: boolean;
-  addLoan: (loan: Omit<Loan, 'id'>) => Promise<void>;
+  addLoan: (loan: Omit<Loan, 'id'>) => Promise<Loan | null>;
   updateLoan: (id: string, loan: Partial<Loan>) => Promise<void>;
   deleteLoan: (id: string) => Promise<void>;
 }
@@ -59,7 +59,7 @@ export function LoanProvider({ children }: { children: React.ReactNode }) {
   // Subscribe to real-time changes on loans domain
   useRealtimeSubscription(['loans'], debouncedRefetch);
 
-  const addLoan = async (newLoan: Omit<Loan, 'id'>) => {
+  const addLoan = async (newLoan: Omit<Loan, 'id'>): Promise<Loan | null> => {
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
@@ -67,10 +67,14 @@ export function LoanProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify(newLoan)
       });
       if (res.ok) {
+        const created: Loan = await res.json();
         await fetchLoans();
+        return created;
       }
+      return null;
     } catch (error) {
       console.error('Error adding loan:', error);
+      return null;
     }
   };
 

@@ -10,12 +10,14 @@ import { useAuth } from '../context/AuthContext';
 import { useBooks } from '../context/BookContext';
 import { useLoans, Loan } from '../context/LoanContext';
 import { useSettings } from '../context/SettingsContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export function LoansAndReturns() {
   const { user: currentUser, users } = useAuth();
   const { settings } = useSettings();
   const { books } = useBooks();
   const { loans, addLoan, updateLoan } = useLoans();
+  const { addNotification } = useNotifications();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -136,9 +138,16 @@ export function LoansAndReturns() {
     updateBook(book.id, { availableCopies: newAvailable, status: newStatus });
 
     setIsModalOpen(false);
-    
-    toast.success("Préstamo registrado con éxito");
-    window.dispatchEvent(new CustomEvent('loan-created', { detail: { bookTitle: book.title, userName: selectedUser?.name || 'Usuario' } }));
+
+    toast.success('Préstamo registrado con éxito');
+
+    // Persistent notification for ALL users
+    addNotification({
+      title: 'Nuevo Préstamo Registrado',
+      message: `Se ha registrado el préstamo de "${book.title}" para ${selectedUser?.name || 'un usuario'}.`,
+      type: 'success',
+      targetUserId: null, // null = visible para todos
+    });
   };
 
   const handleReturn = async (loan: Loan) => {
@@ -150,8 +159,15 @@ export function LoansAndReturns() {
     // when status is set to 'Devuelto' — no need to call updateBook separately.
     await updateLoan(loan.id, { status: 'Devuelto' });
 
-    toast.success("Devolución registrada con éxito");
-    window.dispatchEvent(new CustomEvent('loan-returned', { detail: { bookTitle: book.title, userName: loanUser?.name || 'Usuario' } }));
+    toast.success('Devolución registrada con éxito');
+
+    // Persistent notification for ALL users
+    addNotification({
+      title: 'Devolución Registrada',
+      message: `El libro "${book.title}" ha sido devuelto por ${loanUser?.name || 'un usuario'}.`,
+      type: 'success',
+      targetUserId: null,
+    });
   };
 
   // Estadísticas

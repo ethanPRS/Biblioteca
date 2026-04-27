@@ -8,11 +8,13 @@ import { NotificationBell } from './NotificationBell';
 import { useAuth } from '../context/AuthContext';
 import { useBooks } from '../context/BookContext';
 import { useLoans, Loan } from '../context/LoanContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export function LoanManagement() {
   const { user: currentUser, users } = useAuth();
   const { books, updateBook } = useBooks();
   const { loans, addLoan, updateLoan } = useLoans();
+  const { addNotification } = useNotifications();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,6 +83,16 @@ export function LoanManagement() {
         status: newAvailable <= 0 ? 'Prestado' : 'Disponible'
       });
     }
+
+    // Persistent notification for ALL users
+    const selectedUser = users.find(u => u.id === formData.userId);
+    const selectedBook = books.find(b => b.id === parseInt(formData.bookId));
+    addNotification({
+      title: 'Nuevo Préstamo Registrado',
+      message: `Se ha registrado el préstamo de "${selectedBook?.title || 'libro'}" para ${selectedUser?.name || 'un usuario'}.`,
+      type: 'success',
+      targetUserId: null,
+    });
 
     setIsModalOpen(false);
   };

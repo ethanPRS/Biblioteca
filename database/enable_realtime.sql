@@ -18,6 +18,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE multa;
 ALTER PUBLICATION supabase_realtime ADD TABLE auditoria;
 ALTER PUBLICATION supabase_realtime ADD TABLE usuario;
 ALTER PUBLICATION supabase_realtime ADD TABLE devolucion;
+ALTER PUBLICATION supabase_realtime ADD TABLE notificacion;
 
 -- Set REPLICA IDENTITY FULL on tables so we receive old+new values on UPDATE/DELETE
 ALTER TABLE libro REPLICA IDENTITY FULL;
@@ -29,3 +30,4 @@ ALTER TABLE multa REPLICA IDENTITY FULL;
 ALTER TABLE auditoria REPLICA IDENTITY FULL;
 ALTER TABLE usuario REPLICA IDENTITY FULL;
 ALTER TABLE devolucion REPLICA IDENTITY FULL;
+ALTER TABLE notificacion REPLICA IDENTITY FULL;

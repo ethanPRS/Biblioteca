@@ -11,6 +11,7 @@ import { useBooks } from '../context/BookContext';
 import { useLoanRequests } from '../context/LoanRequestContext';
 import { useLoans } from '../context/LoanContext';
 import { useSettings } from '../context/SettingsContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export function LoanRequests() {
   const { user: currentUser, users } = useAuth();
@@ -18,6 +19,7 @@ export function LoanRequests() {
   const { loanRequests, updateLoanRequest } = useLoanRequests();
   const { loans, addLoan } = useLoans();
   const { settings } = useSettings();
+  const { addNotification } = useNotifications();
   
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -73,6 +75,27 @@ export function LoanRequests() {
       responseDate: new Date().toISOString().split('T')[0],
       reviewedBy: currentUser?.id
     });
+
+    const book = books.find(b => b.id === request.bookId);
+    const requestUser = users.find(u => u.id === request.userId);
+
+    // Notification for ALL users (loan activity)
+    addNotification({
+      title: 'Solicitud Aprobada',
+      message: `La solicitud de "${book?.title || 'libro'}" para ${requestUser?.name || 'un usuario'} fue aprobada.`,
+      type: 'success',
+      targetUserId: null,
+    });
+
+    // Personal notification for the requesting user
+    if (request.userId) {
+      addNotification({
+        title: '¡Tu solicitud fue aprobada!',
+        message: `Tu solicitud del libro "${book?.title || 'libro'}" ha sido aprobada. Ya puedes pasar a recogerlo.`,
+        type: 'success',
+        targetUserId: request.userId,
+      });
+    }
   };
 
   const handleReject = (request: any) => {
@@ -81,6 +104,18 @@ export function LoanRequests() {
       responseDate: new Date().toISOString().split('T')[0],
       reviewedBy: currentUser?.id
     });
+
+    const book = books.find(b => b.id === request.bookId);
+
+    // Personal notification for the requesting user
+    if (request.userId) {
+      addNotification({
+        title: 'Solicitud Rechazada',
+        message: `Tu solicitud del libro "${book?.title || 'libro'}" no pudo ser aprobada en este momento.`,
+        type: 'warning',
+        targetUserId: request.userId,
+      });
+    }
   };
 
   // Estadísticas

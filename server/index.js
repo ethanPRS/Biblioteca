@@ -8,6 +8,7 @@ import finesRouter from './routes/fines.js';
 import auditRouter from './routes/audit.js';
 import chatRouter from './routes/chat.js';
 import loanRequestsRouter from './routes/loanRequests.js';
+import notificationsRouter from './routes/notifications.js';
 import supabase from './db/supabase.js';
 
 dotenv.config();
@@ -65,6 +66,7 @@ const WATCHED_TABLES = [
   { table: 'auditoria', domain: 'audit' },
   { table: 'usuario', domain: 'users' },
   { table: 'devolucion', domain: 'loans' },
+  { table: 'notificacion', domain: 'notifications' },
 ];
 
 // Subscribe to Supabase Realtime for all watched tables
@@ -99,6 +101,7 @@ app.use('/api/fines', finesRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/loanRequests', loanRequestsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend conectado a Supabase' });
