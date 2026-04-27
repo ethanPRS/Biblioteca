@@ -32,6 +32,34 @@ async function fetchBookCatalog() {
   return lines.join('\n');
 }
 
+// Fetch pending fines total for a user directly from DB (same logic as FinesManagement)
+async function fetchPendingFines(userId, dailyFineAmount) {
+  if (!userId) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().split('T')[0];
+
+  const { data: loans, error } = await supabase
+    .from('prestamo')
+    .select('fecha_vencimiento, multa(estatus_pago)')
+    .eq('id_usuario', userId)
+    .lt('fecha_vencimiento', todayStr);
+
+  if (error || !loans) return null;
+
+  let total = 0;
+  for (const loan of loans) {
+    const isPaid = loan.multa?.some(m => m.estatus_pago === 'Pagada') ?? false;
+    if (!isPaid) {
+      const dueDate = new Date(loan.fecha_vencimiento);
+      dueDate.setHours(0, 0, 0, 0);
+      const daysOverdue = Math.ceil((today.getTime() - dueDate.getTime()) / 86400000);
+      total += daysOverdue * dailyFineAmount;
+    }
+  }
+  return total;
+}
+
 // Models to try in order — fallback if one is overloaded or quota-exhausted
 const MODEL_CHAIN = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
 
@@ -44,7 +72,15 @@ router.post('/', async (req, res) => {
       return res.status(500).json({ error: 'Falta configurar GEMINI_API_KEY en el servidor.' });
     }
 
-    const bookCatalog = await fetchBookCatalog();
+    const dailyFineAmount = context?.dailyFineAmount ?? 10;
+    const [bookCatalog, pendingFinesTotal] = await Promise.all([
+      fetchBookCatalog(),
+      fetchPendingFines(context?.userId, dailyFineAmount),
+    ]);
+    const pendingFinesStr = pendingFinesTotal !== null
+      ? `$${pendingFinesTotal.toFixed(2)} MXN`
+      : (context?.pendingFines || '$0.00');
+
     const genAI = new GoogleGenerativeAI(apiKey);
 
     const systemPrompt = `
@@ -55,7 +91,7 @@ Datos del usuario actual:
 Nombre: ${context?.name || 'Usuario'}
 Rol: ${context?.role || 'Desconocido'}
 Préstamos Activos: ${context?.activeLoans || 0}
-Multas Pendientes: ${context?.pendingFines || '$0.00'}
+Multas Pendientes: ${pendingFinesStr}
 
 === CATÁLOGO ACTUAL DE LIBROS EN LA BIBLIOTECA ===
 ${bookCatalog}

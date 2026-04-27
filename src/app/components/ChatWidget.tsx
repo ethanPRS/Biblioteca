@@ -49,25 +49,13 @@ export function ChatWidget() {
 
   const calculateUserContext = () => {
     const activeLoans = loans.filter(l => l.userId === user.id && l.status === 'Activo').length;
-    // Simple mock logic for pending fines context based on loan status
-    let pendingFines = 0;
-    loans.filter(l => l.userId === user.id && !l.finePaid).forEach(loan => {
-      const dueDate = new Date(loan.dueDate);
-      const today = new Date();
-      dueDate.setHours(0, 0, 0, 0);
-      today.setHours(0, 0, 0, 0);
-      const diffTime = today.getTime() - dueDate.getTime();
-      if (diffTime > 0) {
-        const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        pendingFines += daysOverdue * settings.dailyFineAmount;
-      }
-    });
 
     return {
       name: user.name,
       role: user.role,
       activeLoans,
-      pendingFines: `$${pendingFines.toFixed(2)} MXN`
+      userId: user.id,
+      dailyFineAmount: settings.dailyFineAmount,
     };
   };
 
