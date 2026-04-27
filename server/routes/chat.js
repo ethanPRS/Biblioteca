@@ -32,8 +32,8 @@ async function fetchBookCatalog() {
   return lines.join('\n');
 }
 
-// Models to try in order — fallback if one is overloaded
-const MODEL_CHAIN = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash'];
+// Models to try in order — fallback if one is overloaded or quota-exhausted
+const MODEL_CHAIN = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
 
 router.post('/', async (req, res) => {
   try {
