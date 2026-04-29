@@ -38,7 +38,8 @@ export function Dashboard() {
   today.setHours(0, 0, 0, 0);
 
   const overdueLoans = activeLoans.filter(loan => {
-    const dueDate = new Date(loan.dueDate);
+    const [year, month, day] = loan.dueDate.split('T')[0].split('-');
+    const dueDate = new Date(Number(year), Number(month) - 1, Number(day));
     dueDate.setHours(0, 0, 0, 0);
     return dueDate < today;
   });
@@ -47,7 +48,8 @@ export function Dashboard() {
 
   let totalFinesCollected = 0;
   loans.filter(l => l.finePaid).forEach(loan => {
-    const dueDate = new Date(loan.dueDate);
+    const [year, month, day] = loan.dueDate.split('T')[0].split('-');
+    const dueDate = new Date(Number(year), Number(month) - 1, Number(day));
     dueDate.setHours(0, 0, 0, 0);
     const diffTime = today.getTime() - dueDate.getTime();
     if (diffTime > 0) {

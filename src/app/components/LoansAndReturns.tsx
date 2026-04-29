@@ -55,7 +55,8 @@ export function LoansAndReturns() {
   const getLoanStatus = (loan: Loan) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(loan.dueDate);
+    const [year, month, day] = loan.dueDate.split('T')[0].split('-');
+    const dueDate = new Date(Number(year), Number(month) - 1, Number(day));
     dueDate.setHours(0, 0, 0, 0);
     
     // Calculate pending condition fines from the database
@@ -199,7 +200,8 @@ export function LoansAndReturns() {
     if (l.status !== 'Activo') return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(l.dueDate);
+    const [year, month, day] = l.dueDate.split('T')[0].split('-');
+    const dueDate = new Date(Number(year), Number(month) - 1, Number(day));
     dueDate.setHours(0, 0, 0, 0);
     return dueDate < today;
   }).length;
