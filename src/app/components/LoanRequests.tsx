@@ -257,9 +257,10 @@ export function LoanRequests() {
                             {(() => {
                               if (request.status === 'Aprobada') {
                                 // Find the loan associated with this request
-                                const relatedLoan = loans.find(
-                                  l => l.userId === request.userId && l.bookId === request.bookId && new Date(l.borrowDate).getTime() >= new Date(request.requestDate).getTime()
-                                );
+                                const relatedLoans = loans.filter(
+                                  l => l.userId === request.userId && l.bookId === request.bookId
+                                ).sort((a, b) => new Date(b.borrowDate).getTime() - new Date(a.borrowDate).getTime());
+                                const relatedLoan = relatedLoans[0];
                                 if (relatedLoan) {
                                   if (relatedLoan.status === 'Activo') {
                                     return <span className="text-orange-600 font-bold text-xs bg-orange-50 px-2 py-1 rounded-md">Pendiente</span>;
