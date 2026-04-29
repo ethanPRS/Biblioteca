@@ -201,6 +201,7 @@ export function LoanRequests() {
                     <th className="px-6 py-4">Libro</th>
                     <th className="px-6 py-4">Fecha Solicitud</th>
                     <th className="px-6 py-4">Estado</th>
+                    {!isAdmin && <th className="px-6 py-4">Devolución</th>}
                     {isAdmin && <th className="px-6 py-4 text-right">Acciones</th>}
                   </tr>
                 </thead>
@@ -251,6 +252,27 @@ export function LoanRequests() {
                             {request.status}
                           </span>
                         </td>
+                        {!isAdmin && (
+                          <td className="px-6 py-4">
+                            {(() => {
+                              if (request.status === 'Aprobada') {
+                                // Find the loan associated with this request
+                                const relatedLoan = loans.find(
+                                  l => l.userId === request.userId && l.bookId === request.bookId && new Date(l.borrowDate).getTime() >= new Date(request.requestDate).getTime()
+                                );
+                                if (relatedLoan) {
+                                  if (relatedLoan.status === 'Activo') {
+                                    return <span className="text-orange-600 font-bold text-xs bg-orange-50 px-2 py-1 rounded-md">Pendiente</span>;
+                                  } else if (relatedLoan.status === 'Devuelto') {
+                                    return <span className="text-green-600 font-bold text-xs bg-green-50 px-2 py-1 rounded-md">Devuelto</span>;
+                                  }
+                                }
+                                return <span className="text-neutral-400 font-medium text-xs">-</span>;
+                              }
+                              return <span className="text-neutral-400 font-medium text-xs">-</span>;
+                            })()}
+                          </td>
+                        )}
                         {isAdmin && (
                           <td className="px-6 py-4">
                             {request.status === 'Pendiente' && (
