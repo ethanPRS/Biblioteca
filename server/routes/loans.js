@@ -64,10 +64,11 @@ router.put('/:id', async (req, res) => {
       const { data: loan } = await supabase.from('prestamo')
         .select(`
           id_ejemplar, 
-          id_usuario, 
+          id_usuario,
+          fecha_vencimiento,
           ejemplar (
             id_libro,
-            libro ( precio )
+            libro ( precio, costo_multa_base )
           )
         `)
         .eq('id_prestamo', loanId)
@@ -83,9 +84,38 @@ router.put('/:id', async (req, res) => {
           observaciones: notes || '',
         });
 
+        // Al devolver, congelamos el monto de la multa por retraso si existe
+        const { data: multaRetraso } = await supabase.from('multa')
+          .select('id_multa')
+          .eq('id_prestamo', loanId)
+          .eq('tipo', 'Retraso')
+          .eq('estatus_pago', 'Pendiente')
+          .single();
+          
+        if (multaRetraso) {
+          const today = returnDate || new Date().toISOString().split('T')[0];
+          const [yT, mT, dT] = today.split('-');
+          const fechaRetorno = new Date(Number(yT), Number(mT) - 1, Number(dT));
+          fechaRetorno.setHours(0, 0, 0, 0);
+
+          const [yV, mV, dV] = loan.fecha_vencimiento.split('T')[0].split('-');
+          const fechaVenc = new Date(Number(yV), Number(mV) - 1, Number(dV));
+          fechaVenc.setHours(0, 0, 0, 0);
+
+          const diff = fechaRetorno.getTime() - fechaVenc.getTime();
+          const diasRetraso = Math.max(0, Math.floor(diff / 86400000));
+          
+          if (diasRetraso > 0) {
+            const libroObj = Array.isArray(loan.ejemplar?.libro) ? loan.ejemplar.libro[0] : loan.ejemplar?.libro;
+            const costoBase = libroObj?.costo_multa_base || 10;
+            await supabase.from('multa')
+              .update({ monto: diasRetraso * costoBase, dias_retraso: diasRetraso })
+              .eq('id_multa', multaRetraso.id_multa);
+          }
+        }
+
         if (condition === 'Mal Estado' || condition === 'Se perdio') {
-          // Si el libro se perdió o se dañó, perdonamos/borramos la multa por retraso para que no se sume al costo
-          await supabase.from('multa').delete().eq('id_prestamo', loanId).eq('tipo', 'Retraso');
+          // No borramos la multa por retraso, se suman ambas deudas.
 
           // libro might be an object or an array depending on foreign key
           const libroObj = Array.isArray(loan.ejemplar?.libro) ? loan.ejemplar.libro[0] : loan.ejemplar?.libro;
