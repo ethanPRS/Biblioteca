@@ -9,24 +9,49 @@ router.get('/', async (req, res) => {
     const { data, error } = await supabase
       .from('multa')
       .select(`id_multa, id_usuario, id_prestamo, tipo, monto, dias_retraso, estatus_pago, fecha_generacion,
-        prestamo ( fecha_prestamo, fecha_vencimiento, estatus, ejemplar ( id_libro ) )`)
+        prestamo ( fecha_prestamo, fecha_vencimiento, estatus, ejemplar ( id_libro, libro ( costo_multa_base ) ) )`)
       .order('fecha_generacion', { ascending: false });
     if (error) throw error;
 
-    const fines = data.map(m => ({
-      id: m.id_multa,
-      userId: m.id_usuario,
-      loanId: m.id_prestamo,
-      type: m.tipo,
-      amount: m.monto,
-      daysOverdue: m.dias_retraso,
-      paymentStatus: m.estatus_pago,
-      createdAt: m.fecha_generacion,
-      borrowDate: m.prestamo?.fecha_prestamo,
-      dueDate: m.prestamo?.fecha_vencimiento,
-      loanStatus: m.prestamo?.estatus,
-      bookId: m.prestamo?.ejemplar?.id_libro,
-    }));
+    const fines = data.map(m => {
+      let finalAmount = m.monto;
+      let finalDaysOverdue = m.dias_retraso;
+
+      // If the loan is still active and it's a delay fine, dynamically calculate the current fine
+      if (m.tipo === 'Retraso' && m.estatus_pago === 'Pendiente' && m.prestamo?.estatus === 'Activo') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Correct timezone issue for due date string parsing
+        const [year, month, day] = m.prestamo.fecha_vencimiento.split('T')[0].split('-');
+        const dueDate = new Date(Number(year), Number(month) - 1, Number(day));
+        dueDate.setHours(0, 0, 0, 0);
+        
+        const diffTime = today.getTime() - dueDate.getTime();
+        const calculatedDaysOverdue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+        
+        if (calculatedDaysOverdue > 0) {
+          finalDaysOverdue = calculatedDaysOverdue;
+          const baseCost = m.prestamo?.ejemplar?.libro?.costo_multa_base || 10;
+          finalAmount = finalDaysOverdue * baseCost;
+        }
+      }
+
+      return {
+        id: m.id_multa,
+        userId: m.id_usuario,
+        loanId: m.id_prestamo,
+        type: m.tipo,
+        amount: finalAmount,
+        daysOverdue: finalDaysOverdue,
+        paymentStatus: m.estatus_pago,
+        createdAt: m.fecha_generacion,
+        borrowDate: m.prestamo?.fecha_prestamo,
+        dueDate: m.prestamo?.fecha_vencimiento,
+        loanStatus: m.prestamo?.estatus,
+        bookId: m.prestamo?.ejemplar?.id_libro,
+      };
+    });
     res.json(fines);
   } catch (error) {
     res.status(500).json({ error: error.message });
