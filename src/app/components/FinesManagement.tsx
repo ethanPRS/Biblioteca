@@ -18,6 +18,7 @@ export function FinesManagement() {
   const { fines } = useFines();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string>('all');
 
   const isAdmin = currentUser?.role === 'Administrador' || currentUser?.role === 'Bibliotecario';
 
@@ -26,8 +27,13 @@ export function FinesManagement() {
     ? fines
     : fines.filter(f => f.userId === currentUser?.id);
 
-  // Filtrar por búsqueda (nombre del libro o usuario)
+  // Filtrar por búsqueda (nombre del libro o usuario) y select
   const filteredFines = visibleFines.filter(fine => {
+    // Filtro por dropdown de usuario
+    if (isAdmin && selectedUserId !== 'all' && fine.userId !== selectedUserId) {
+      return false;
+    }
+
     const fineUser = users.find(u => u.id === fine.userId);
     const fineBook = books.find(b => b.id === fine.bookId);
     const searchLower = searchQuery.toLowerCase();
@@ -61,15 +67,34 @@ export function FinesManagement() {
     <>
       {/* Topbar */}
       <header className="h-16 md:h-20 bg-white border-b border-neutral-100 flex items-center justify-between px-4 pl-[68px] lg:px-8 shrink-0 shadow-sm z-10 relative gap-4">
-        <div className="relative flex-1 max-w-[480px]">
-          <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-neutral-400 w-4 h-4 md:w-5 md:h-5" />
-          <input 
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-full py-2 pl-9 pr-3 md:py-2.5 md:pl-12 md:pr-4 text-xs md:text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all placeholder:text-neutral-400" 
-            placeholder="Buscar por nombre, matrícula o libro..." 
-          />
+        <div className="relative flex-1 max-w-[700px] flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-neutral-400 w-4 h-4 md:w-5 md:h-5" />
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-full py-2 pl-9 pr-3 md:py-2.5 md:pl-12 md:pr-4 text-xs md:text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all placeholder:text-neutral-400" 
+              placeholder="Buscar por nombre, matrícula o libro..." 
+            />
+          </div>
+
+          {isAdmin && (
+            <select
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              className="hidden sm:block w-[200px] lg:w-[240px] bg-[#F8FAFC] border border-neutral-200 rounded-full px-4 py-2.5 text-xs md:text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all text-neutral-600"
+            >
+              <option value="all">Todos los usuarios</option>
+              {users
+                .filter(u => fines.some(f => f.userId === u.id))
+                .map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+            </select>
+          )}
         </div>
 
         <div className="flex items-center gap-3 md:gap-6 shrink-0">
