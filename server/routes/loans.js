@@ -84,6 +84,9 @@ router.put('/:id', async (req, res) => {
         });
 
         if (condition === 'Mal Estado' || condition === 'Se perdio') {
+          // Si el libro se perdió o se dañó, perdonamos/borramos la multa por retraso para que no se sume al costo
+          await supabase.from('multa').delete().eq('id_prestamo', loanId).eq('tipo', 'Retraso');
+
           // libro might be an object or an array depending on foreign key
           const libroObj = Array.isArray(loan.ejemplar?.libro) ? loan.ejemplar.libro[0] : loan.ejemplar?.libro;
           const precio = libroObj?.precio || 0;
