@@ -58,28 +58,38 @@ export function LoansAndReturns() {
     const dueDate = new Date(loan.dueDate);
     dueDate.setHours(0, 0, 0, 0);
     
+    // Calculate pending condition fines from the database
+    const pendingConditionFines = loan.fines?.filter(f => (f.tipo === 'Daño' || f.tipo === 'Pérdida') && f.estatus_pago !== 'Pagada') || [];
+    const conditionFineTotal = pendingConditionFines.reduce((sum, f) => sum + (f.monto || 0), 0);
+    const conditionLabels = pendingConditionFines.map(f => f.tipo).join(' y ');
+
     if (loan.status === 'Devuelto') {
+      // Si el préstamo ya fue devuelto y hay multa pendiente por daños o pérdida
+      if (conditionFineTotal > 0) {
+        return {
+          label: 'Devuelto con Adeudo',
+          type: 'overdue' as const,
+          color: 'bg-red-100 text-red-700',
+          fine: conditionFineTotal,
+          fineType: conditionLabels
+        };
+      }
+
       const returnDate = new Date(); // En un sistema real, tendrías una fecha de devolución
       const diffTime = dueDate.getTime() - returnDate.getTime();
-      const daysDiff = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (daysDiff > 0) {
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays >= 0) {
         return {
-          label: `Devuelto ${daysDiff} ${daysDiff === 1 ? 'día' : 'días'} antes`,
+          label: 'Devuelto a tiempo',
           type: 'early' as const,
           color: 'bg-green-100 text-green-700'
         };
-      } else if (daysDiff < 0) {
-        return {
-          label: `Devuelto ${Math.abs(daysDiff)} ${Math.abs(daysDiff) === 1 ? 'día' : 'días'} tarde`,
-          type: 'late' as const,
-          color: 'bg-red-100 text-red-700'
-        };
       } else {
         return {
-          label: 'Devuelto a tiempo',
-          type: 'ontime' as const,
-          color: 'bg-green-100 text-green-700'
+          label: `Devuelto con ${Math.abs(diffDays)} días de retraso`,
+          type: 'late' as const,
+          color: 'bg-orange-100 text-orange-700'
         };
       }
     }
@@ -346,7 +356,7 @@ export function LoansAndReturns() {
                             </span>
                             {status.fine && (
                               <span className="text-xs text-red-600 font-semibold">
-                                Multa: ${status.fine}
+                                Multa ({status.fineType || 'Retraso'}): ${status.fine}
                               </span>
                             )}
                           </div>

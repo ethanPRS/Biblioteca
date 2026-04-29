@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
       .from('prestamo')
       .select(`id_prestamo, id_usuario, id_ejemplar, fecha_prestamo, fecha_vencimiento, estatus,
         ejemplar ( id_libro ),
-        multa ( id_multa, estatus_pago )`);
+        multa ( id_multa, estatus_pago, monto, tipo )`);
     if (error) throw error;
 
     const loans = prestamos.map(p => ({
@@ -22,6 +22,7 @@ router.get('/', async (req, res) => {
       status: p.estatus,
       loanCopyId: p.id_ejemplar,
       finePaid: p.multa?.some(m => m.estatus_pago === 'Pagada') ?? false,
+      fines: p.multa || [],
     }));
     res.json(loans);
   } catch (error) {
@@ -86,7 +87,11 @@ router.put('/:id', async (req, res) => {
           // libro might be an object or an array depending on foreign key
           const libroObj = Array.isArray(loan.ejemplar?.libro) ? loan.ejemplar.libro[0] : loan.ejemplar?.libro;
           const precio = libroObj?.precio || 0;
-          const porcentaje = condition === 'Se perdio' ? 1.0 : 0.5;
+          const { data: config } = await supabase.from('configuracion_multas').select('porcentaje_dano, porcentaje_perdida').single();
+          const pDano = config ? parseFloat(config.porcentaje_dano) : 0.5;
+          const pPerdida = config ? parseFloat(config.porcentaje_perdida) : 1.0;
+
+          const porcentaje = condition === 'Se perdio' ? pPerdida : pDano;
           const montoMulta = precio * porcentaje;
 
           if (montoMulta > 0) {

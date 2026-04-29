@@ -11,6 +11,7 @@ export interface Loan {
   finePaid?: boolean;
   loanCopyId?: number;
   condition?: string;
+  fines?: any[];
 }
 
 const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/loans`;

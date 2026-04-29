@@ -214,7 +214,7 @@ export function SettingsConfig() {
 
                   <div className="mt-8 pt-8 border-t border-neutral-100 max-w-2xl">
                     <h4 className="font-semibold text-sm text-neutral-400 uppercase tracking-wider mb-6">Configuración de Multas</h4>
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 mb-6">
                       <div className="flex-1 space-y-2">
                         <label className="text-sm font-semibold text-gray-900 block">Monto por día de retraso</label>
                         <div className="relative">
@@ -228,6 +228,27 @@ export function SettingsConfig() {
                           <option value="MXN">MXN</option>
                           <option value="USD">USD</option>
                         </select>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <div className="flex-1 space-y-2">
+                        <label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                          Cargo por Daño
+                          <span className="text-[10px] bg-neutral-100 text-neutral-500 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Fijo</span>
+                        </label>
+                        <div className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium text-neutral-600 cursor-not-allowed select-none opacity-80">
+                          <span className="font-bold text-gray-900">50%</span> del costo del libro
+                        </div>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                          Cargo por Pérdida
+                          <span className="text-[10px] bg-neutral-100 text-neutral-500 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Fijo</span>
+                        </label>
+                        <div className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-xl px-4 py-3 text-sm font-medium text-neutral-600 cursor-not-allowed select-none opacity-80">
+                          <span className="font-bold text-gray-900">100%</span> del costo del libro
+                        </div>
                       </div>
                     </div>
                   </div>
