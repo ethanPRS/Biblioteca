@@ -14,8 +14,7 @@ import { toast } from 'sonner';
 export function FinesManagement() {
   const { user: currentUser, users } = useAuth();
   const { books } = useBooks();
-  const { updateLoan } = useLoans();
-  const { fines } = useFines();
+  const { fines, updateFine } = useFines();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
@@ -58,9 +57,14 @@ export function FinesManagement() {
     isPaid: fine.paymentStatus !== 'Pendiente',
   }));
 
-  // Marcar como pagada: actualiza la multa vía la ruta de préstamos
-  const handlePayFine = (loanId: string) => {
-    updateLoan(loanId, { finePaid: true });
+  // Marcar como pagada: actualiza la multa específica
+  const handlePayFine = async (fineId: number) => {
+    try {
+      await updateFine(fineId, { paymentStatus: 'Pagada' });
+      toast.success('Multa marcada como pagada/condonada');
+    } catch (error) {
+      toast.error('Error al procesar el pago de la multa');
+    }
   };
 
   return (
@@ -228,7 +232,7 @@ export function FinesManagement() {
                           {!isPaid ? (
                             isAdmin ? (
                               <button
-                                onClick={() => handlePayFine(fine.loanId)}
+                                onClick={() => handlePayFine(fine.id)}
                                 className="inline-flex items-center gap-1.5 bg-[#2B74FF] hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
                               >
                                 <DollarSign className="w-3.5 h-3.5" />

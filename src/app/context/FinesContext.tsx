@@ -19,6 +19,7 @@ export interface Fine {
 interface FinesContextType {
   fines: Fine[];
   isLoading: boolean;
+  updateFine: (fineId: number, data: Partial<Fine>) => Promise<void>;
 }
 
 const FinesContext = createContext<FinesContextType | null>(null);
@@ -61,8 +62,26 @@ export function FinesProvider({ children }: { children: React.ReactNode }) {
   // Refresh when fines or loans change (loan payment updates multa via loans route)
   useRealtimeSubscription(['fines', 'loans'], debouncedRefetch);
 
+  const updateFine = async (fineId: number, data: Partial<Fine>) => {
+    try {
+      const res = await fetch(`${API_URL}/${fineId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentStatus: data.paymentStatus }) // Fines route expects paymentStatus
+      });
+      if (res.ok) {
+        setFines(prev => prev.map(f => f.id === fineId ? { ...f, ...data } : f));
+      } else {
+        throw new Error('Failed to update fine');
+      }
+    } catch (error) {
+      console.error('Error updating fine:', error);
+      throw error;
+    }
+  };
+
   return (
-    <FinesContext.Provider value={{ fines, isLoading }}>
+    <FinesContext.Provider value={{ fines, isLoading, updateFine }}>
       {children}
     </FinesContext.Provider>
   );
