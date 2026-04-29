@@ -60,15 +60,47 @@ router.put('/:id', async (req, res) => {
     // For returns: update ejemplar and insert devolucion BEFORE updating prestamo status,
     // so that when SSE fires for the prestamo change the exemplar is already Disponible.
     if (status === 'Devuelto') {
-      const { data: loan } = await supabase.from('prestamo').select('id_ejemplar').eq('id_prestamo', loanId).single();
+      const { data: loan } = await supabase.from('prestamo')
+        .select(`
+          id_ejemplar, 
+          id_usuario, 
+          ejemplar (
+            id_libro,
+            libro ( precio )
+          )
+        `)
+        .eq('id_prestamo', loanId)
+        .single();
+
       if (loan) {
-        await supabase.from('ejemplar').update({ estatus: 'Disponible' }).eq('id_ejemplar', loan.id_ejemplar);
+        const estatusEjemplar = condition === 'Se perdio' ? 'Perdido' : 'Disponible';
+        await supabase.from('ejemplar').update({ estatus: estatusEjemplar }).eq('id_ejemplar', loan.id_ejemplar);
         await supabase.from('devolucion').insert({
           id_prestamo: loanId,
           fecha_devolucion: returnDate || new Date().toISOString().split('T')[0],
-          condicion_entrega: condition || 'Buena',
+          condicion_entrega: condition || 'Buen Estado',
           observaciones: notes || '',
         });
+
+        if (condition === 'Mal Estado' || condition === 'Se perdio') {
+          // libro might be an object or an array depending on foreign key
+          const libroObj = Array.isArray(loan.ejemplar?.libro) ? loan.ejemplar.libro[0] : loan.ejemplar?.libro;
+          const precio = libroObj?.precio || 0;
+          const porcentaje = condition === 'Se perdio' ? 1.0 : 0.5;
+          const montoMulta = precio * porcentaje;
+
+          if (montoMulta > 0) {
+            await supabase.from('multa').insert({
+              id_usuario: loan.id_usuario,
+              id_prestamo: loanId,
+              tipo: condition === 'Se perdio' ? 'Pérdida' : 'Daño',
+              monto: montoMulta,
+              dias_retraso: 0,
+              estatus_pago: 'Pendiente',
+              fecha_generacion: new Date().toISOString().split('T')[0],
+            });
+          }
+        }
       }
     }
 

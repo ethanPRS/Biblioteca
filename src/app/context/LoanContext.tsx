@@ -10,6 +10,7 @@ export interface Loan {
   status: 'Activo' | 'Devuelto' | 'Vencido';
   finePaid?: boolean;
   loanCopyId?: number;
+  condition?: string;
 }
 
 const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/loans`;

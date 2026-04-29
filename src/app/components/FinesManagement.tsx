@@ -126,8 +126,8 @@ export function FinesManagement() {
                 <thead>
                   <tr className="bg-[#F8FAFC] border-b border-neutral-200 text-sm font-semibold text-neutral-500">
                     {isAdmin && <th className="px-6 py-4">Usuario</th>}
-                    <th className="px-6 py-4">Libro Atrasado</th>
-                    <th className="px-6 py-4">Retraso</th>
+                    <th className="px-6 py-4">Libro</th>
+                    <th className="px-6 py-4">Tipo/Retraso</th>
                     <th className="px-6 py-4">Monto ($)</th>
                     <th className="px-6 py-4">Estatus</th>
                     <th className="px-6 py-4 text-right">Acción</th>
@@ -170,9 +170,16 @@ export function FinesManagement() {
                           </div>
                         </td>
 
-                        {/* Retraso */}
+                        {/* Tipo / Retraso */}
                         <td className="px-6 py-4">
-                          <span className="text-red-600 font-bold">{daysOverdue} días</span>
+                          <div className="flex flex-col">
+                            <span className={`font-bold ${fine.type === 'Retraso' ? 'text-orange-600' : 'text-red-600'}`}>
+                              {fine.type}
+                            </span>
+                            {fine.type === 'Retraso' && (
+                              <span className="text-xs text-neutral-500 font-medium">{daysOverdue} días de mora</span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Monto */}

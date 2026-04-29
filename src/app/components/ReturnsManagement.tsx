@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { UserProfileDropdown } from "./UserProfileDropdown";
-import { 
-  Search, Bell, CheckCircle, Clock, AlertCircle, ArrowRightLeft 
+  Search, Bell, CheckCircle, Clock, AlertCircle, ArrowRightLeft, X
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { NotificationBell } from './NotificationBell';
@@ -31,10 +31,25 @@ export function ReturnsManagement() {
     return userMatch || bookMatch;
   });
 
-  const handleReturn = (loan: Loan) => {
-    // Marcar el préstamo como Devuelto.
-    // El backend actualiza automáticamente el estatus del ejemplar a 'Disponible'.
-    updateLoan(loan.id, { status: 'Devuelto' });
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  const [returnCondition, setReturnCondition] = useState<string>('Buen Estado');
+
+  const handleReturnClick = (loan: Loan) => {
+    setSelectedLoan(loan);
+    setReturnCondition('Buen Estado');
+    setIsReturnModalOpen(true);
+  };
+
+  const confirmReturn = async () => {
+    if (!selectedLoan) return;
+    await updateLoan(selectedLoan.id, { 
+      status: 'Devuelto', 
+      condition: returnCondition 
+    });
+    toast.success('Devolución registrada con éxito');
+    setIsReturnModalOpen(false);
+    setSelectedLoan(null);
   };
 
   // Función para calcular si un préstamo está vencido
@@ -185,7 +200,7 @@ export function ReturnsManagement() {
                         {/* Acción - Registrar Devolución */}
                         <td className="px-6 py-4 text-right">
                           <button 
-                            onClick={() => handleReturn(loan)}
+                            onClick={() => handleReturnClick(loan)}
                             className="inline-flex items-center justify-center gap-2 bg-[#2B74FF] hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md shadow-[#2B74FF]/20 group-hover:scale-105"
                           >
                             <CheckCircle className="w-4 h-4" />
@@ -220,6 +235,92 @@ export function ReturnsManagement() {
           
         </div>
       </div>
+
+      {/* Return Modal */}
+      {isReturnModalOpen && selectedLoan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" onClick={() => setIsReturnModalOpen(false)}></div>
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Confirmar Devolución</h2>
+              <button 
+                onClick={() => setIsReturnModalOpen(false)}
+                className="p-2 text-neutral-400 hover:bg-neutral-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-neutral-600 mb-4">
+                Por favor, indica el estado en el que se devuelve el libro.
+              </p>
+              
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 p-3 border border-neutral-200 rounded-xl cursor-pointer hover:bg-neutral-50 transition-colors">
+                  <input 
+                    type="radio" 
+                    name="condition" 
+                    value="Buen Estado" 
+                    checked={returnCondition === 'Buen Estado'}
+                    onChange={(e) => setReturnCondition(e.target.value)}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">Buen Estado</p>
+                    <p className="text-xs text-neutral-500">El libro no presenta daños significativos.</p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 p-3 border border-neutral-200 rounded-xl cursor-pointer hover:bg-neutral-50 transition-colors">
+                  <input 
+                    type="radio" 
+                    name="condition" 
+                    value="Mal Estado" 
+                    checked={returnCondition === 'Mal Estado'}
+                    onChange={(e) => setReturnCondition(e.target.value)}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">Mal Estado</p>
+                    <p className="text-xs text-neutral-500">Se cobrará el 50% del valor del libro como multa.</p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 p-3 border border-neutral-200 rounded-xl cursor-pointer hover:bg-neutral-50 transition-colors">
+                  <input 
+                    type="radio" 
+                    name="condition" 
+                    value="Se perdio" 
+                    checked={returnCondition === 'Se perdio'}
+                    onChange={(e) => setReturnCondition(e.target.value)}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">Se perdió</p>
+                    <p className="text-xs text-neutral-500">Se cobrará el 100% del valor del libro como multa.</p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => setIsReturnModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl font-semibold text-sm text-neutral-600 hover:bg-neutral-100 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={confirmReturn}
+                  className="bg-[#2B74FF] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md shadow-[#2B74FF]/20"
+                >
+                  Confirmar Devolución
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
