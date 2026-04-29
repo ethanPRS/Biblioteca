@@ -211,7 +211,7 @@ export function FinesManagement() {
                               {fine.type}
                             </span>
                             {fine.type === 'Retraso' && (
-                              <span className="text-xs text-neutral-500 font-medium">{daysOverdue} días de mora</span>
+                              <span className="text-xs text-neutral-500 font-medium">{daysOverdue} días de demora</span>
                             )}
                           </div>
                         </td>
