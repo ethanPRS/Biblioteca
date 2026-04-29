@@ -46,7 +46,7 @@ export function MyBooks() {
 
     const diffTime = today.getTime() - dueDate.getTime();
     const rawDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const daysOverdue = rawDays > 0 ? rawDays + 1 : 0;
+    const daysOverdue = rawDays > 0 ? rawDays + 1 : rawDays;
 
     if (daysOverdue > 0) {
       // Use the recorded fine amount from DB; fall back to dynamic calculation if not yet registered
