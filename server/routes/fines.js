@@ -28,7 +28,8 @@ router.get('/', async (req, res) => {
         dueDate.setHours(0, 0, 0, 0);
         
         const diffTime = today.getTime() - dueDate.getTime();
-        const calculatedDaysOverdue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+        const rawDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+        const calculatedDaysOverdue = rawDays > 0 ? rawDays + 1 : 0;
         
         if (calculatedDaysOverdue > 0) {
           finalDaysOverdue = calculatedDaysOverdue;
@@ -79,7 +80,8 @@ router.post('/generate', async (req, res) => {
     if (toCreate.length === 0) return res.json({ message: '0 multas generadas', count: 0 });
 
     const inserts = toCreate.map(loan => {
-      const diasRetraso = Math.floor((new Date(today) - new Date(loan.fecha_vencimiento)) / 86400000);
+      const rawDays = Math.floor((new Date(today) - new Date(loan.fecha_vencimiento)) / 86400000);
+      const diasRetraso = rawDays > 0 ? rawDays + 1 : 0;
       const costoBase = loan.ejemplar?.libro?.costo_multa_base || 10;
       return {
         id_usuario: loan.id_usuario, id_prestamo: loan.id_prestamo,

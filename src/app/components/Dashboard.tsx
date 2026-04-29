@@ -53,7 +53,8 @@ export function Dashboard() {
     dueDate.setHours(0, 0, 0, 0);
     const diffTime = today.getTime() - dueDate.getTime();
     if (diffTime > 0) {
-      const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const rawDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const daysOverdue = rawDays > 0 ? rawDays + 1 : 0;
       totalFinesCollected += daysOverdue * settings.dailyFineAmount;
     }
   });
