@@ -55,7 +55,12 @@ export function FinesManagement() {
     daysOverdue: fine.daysOverdue,
     amount: fine.amount,
     isPaid: fine.paymentStatus !== 'Pendiente',
-  }));
+  })).sort((a, b) => {
+    if (a.isPaid !== b.isPaid) {
+      return a.isPaid ? 1 : -1;
+    }
+    return new Date(b.fine.createdAt).getTime() - new Date(a.fine.createdAt).getTime();
+  });
 
   // Marcar como pagada: actualiza la multa específica
   const handlePayFine = async (fineId: number) => {
