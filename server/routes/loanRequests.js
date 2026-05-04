@@ -27,6 +27,19 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const { bookId, userId, requestDate, status } = req.body;
   try {
+    // Check if user has pending fines
+    const { data: userFines, error: finesError } = await supabase
+      .from('multas')
+      .select('estatus_pago')
+      .eq('id_usuario', userId)
+      .eq('estatus_pago', 'Pendiente');
+
+    if (finesError) throw finesError;
+
+    if (userFines && userFines.length > 0) {
+      return res.status(403).json({ error: 'El usuario tiene multas pendientes y no puede solicitar préstamos.' });
+    }
+
     const { data, error } = await supabase
       .from('lista_espera')
       .insert({ id_usuario: userId, id_libro: bookId, fecha_registro: requestDate, estatus: status || 'Pendiente' })

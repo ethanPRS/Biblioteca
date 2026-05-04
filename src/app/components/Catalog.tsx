@@ -10,6 +10,7 @@ import { useBooks, Book } from '../context/BookContext';
 import { useLoans } from '../context/LoanContext';
 import { useLoanRequests } from '../context/LoanRequestContext';
 import { useSettings } from '../context/SettingsContext';
+import { useFines } from '../context/FinesContext';
 import { NotificationBell } from './NotificationBell';
 import { toast } from 'sonner';
 
@@ -24,6 +25,7 @@ export function Catalog() {
   const { loans, addLoan } = useLoans();
   const { loanRequests, addLoanRequest } = useLoanRequests();
   const { settings } = useSettings();
+  const { fines } = useFines();
   const navigate = useNavigate();
 
   // Dynamically compute categories so there are no empty tabs!
@@ -40,6 +42,14 @@ export function Catalog() {
 
   const handleBorrow = () => {
     if (!user || !selectedBook || selectedBook.availableCopies <= 0 || isMyLoan) return;
+
+    const hasPendingFines = fines.some(f => f.userId === user.id && f.paymentStatus === 'Pendiente');
+    if (hasPendingFines) {
+      toast.error('No puedes solicitar libros', { 
+        description: 'Tienes multas pendientes. Por favor paga tu multa para continuar con la solicitud.' 
+      });
+      return;
+    }
 
     const isAdmin = user.role === 'Administrador' || user.role === 'Bibliotecario';
     
@@ -442,7 +452,6 @@ export function Catalog() {
               
               </div> {/* <-- Cierra el área de overflow-y-auto */}
 
-              {/* Botón Estático al fondo */}
               <div className="px-6 md:px-10 py-5 bg-white border-t border-neutral-100 shrink-0 z-10 w-full shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.03)] mt-auto">
                 {isMyLoan ? (
                   <button 
@@ -451,6 +460,19 @@ export function Catalog() {
                   >
                     Ya tienes este libro
                   </button>
+                ) : user && fines.some(f => f.userId === user.id && f.paymentStatus === 'Pendiente') ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm font-bold text-red-600 text-center">
+                      Debes pagar tus multas pendientes para poder solicitar libros.
+                    </p>
+                    <button 
+                      onClick={handleBorrow}
+                      className="w-full bg-red-100 hover:bg-red-200 text-red-700 py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2"
+                    >
+                      <AlertCircle className="w-5 h-5" />
+                      Multa Pendiente
+                    </button>
+                  </div>
                 ) : selectedBook.status === 'Disponible' ? (
                   <button 
                     onClick={handleBorrow}
