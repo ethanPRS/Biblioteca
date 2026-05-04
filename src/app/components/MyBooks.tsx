@@ -49,18 +49,9 @@ export function MyBooks() {
     const daysOverdue = rawDays > 0 ? rawDays + 1 : rawDays;
 
     if (daysOverdue > 0) {
-      // Verificamos si existe alguna multa registrada para este préstamo en la base de datos
-      const fineRecord = fines.find(f => f.loanId === loan.id);
-      
-      let fineAmount = 0;
-      if (fineRecord) {
-        // Si ya existe un registro, solo mostramos el monto si sigue "Pendiente"
-        fineAmount = fineRecord.paymentStatus === 'Pendiente' ? fineRecord.amount : 0;
-      } else {
-        // Si aún no se ha generado registro en la BD, la calculamos dinámicamente
-        fineAmount = daysOverdue * settings.dailyFineAmount;
-      }
-
+      // Use the recorded fine amount from DB; fall back to dynamic calculation if not yet registered
+      const fineRecord = fines.find(f => f.loanId === loan.id && f.paymentStatus === 'Pendiente');
+      const fineAmount = fineRecord ? fineRecord.amount : daysOverdue * settings.dailyFineAmount;
       return {
         label: `Vencido hace ${daysOverdue} ${daysOverdue === 1 ? 'día' : 'días'}`,
         type: 'overdue' as const,

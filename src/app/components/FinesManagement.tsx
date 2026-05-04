@@ -76,12 +76,7 @@ export function FinesManagement() {
       await verifyFine(fineId);
       
       setVerifyPopup(prev => ({ ...prev, status: 'success' }));
-      
-      // Cerrar automáticamente después de éxito
-      setTimeout(() => {
-        setVerifyPopup({ isOpen: false, status: 'loading', fineId: null });
-        toast.success('El pago ha sido validado correctamente.');
-      }, 2000);
+      toast.success('El pago ha sido validado correctamente.');
       
     } catch (error) {
       setVerifyPopup(prev => ({ ...prev, status: 'error' }));
