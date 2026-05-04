@@ -253,7 +253,7 @@ export function FinesManagement() {
                                 className="inline-flex items-center gap-1.5 bg-[#2B74FF] hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
                               >
                                 <DollarSign className="w-3.5 h-3.5" />
-                                Pagar/Condonar
+                                Revisar Pago
                               </button>
                             ) : (
                               <button
