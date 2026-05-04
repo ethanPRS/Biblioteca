@@ -195,7 +195,6 @@ export function LoansAndReturns() {
     setSelectedLoanForReturn(null);
   };
 
-  // Estadísticas
   const activeLoans = filteredLoans.filter(l => l.status === 'Activo').length;
   const overdueLoans = filteredLoans.filter(l => {
     if (l.status !== 'Activo') return false;
@@ -207,6 +206,21 @@ export function LoansAndReturns() {
     return dueDate < today;
   }).length;
   const returnedLoans = filteredLoans.filter(l => l.status === 'Devuelto').length;
+
+  // Ordenar préstamos para mostrar hasta arriba los que requieren acción (Marcar como devuelto)
+  const sortedLoans = [...filteredLoans].sort((a, b) => {
+    // 1. Activo primero
+    if (a.status === 'Activo' && b.status !== 'Activo') return -1;
+    if (a.status !== 'Activo' && b.status === 'Activo') return 1;
+    
+    // Si ambos son Activos, priorizar los que están vencidos o por vencer
+    if (a.status === 'Activo' && b.status === 'Activo') {
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    }
+    
+    // Si ya están devueltos, ordenar del más reciente al más antiguo
+    return new Date(b.borrowDate).getTime() - new Date(a.borrowDate).getTime();
+  });
 
   return (
     <>
@@ -305,7 +319,7 @@ export function LoansAndReturns() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 text-sm">
-                  {filteredLoans.map(loan => {
+                  {sortedLoans.map(loan => {
                     const loanUser = users.find(u => u.id === loan.userId);
                     const loanBook = books.find(b => b.id === loan.bookId);
                     const status = getLoanStatus(loan);
