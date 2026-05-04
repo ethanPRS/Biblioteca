@@ -114,6 +114,40 @@ export function LoanRequests() {
   const pendingCount = filteredRequests.filter(r => r.status === 'Pendiente').length;
   const approvedCount = filteredRequests.filter(r => r.status === 'Aprobada').length;
   const rejectedCount = filteredRequests.filter(r => r.status === 'Rechazada').length;
+  // Ordenar solicitudes: 
+  // 1. Pendientes
+  // 2. Aprobadas con préstamo activo VENCIDO (retraso)
+  // 3. El resto
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
+    const getPriority = (request: any) => {
+      if (request.status === 'Pendiente') return 1;
+      
+      if (request.status === 'Aprobada') {
+        const activeLoan = loans.find(l => l.userId === request.userId && l.bookId === request.bookId && l.status === 'Activo');
+        if (activeLoan) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Fix timezone issues by manually parsing YYYY-MM-DD
+          const [year, month, day] = activeLoan.dueDate.split('T')[0].split('-');
+          const dueDate = new Date(Number(year), Number(month) - 1, Number(day));
+          dueDate.setHours(0, 0, 0, 0);
+          
+          if (dueDate < today) return 2; // Es un retraso
+        }
+      }
+      return 3;
+    };
+
+    const priorityA = getPriority(a);
+    const priorityB = getPriority(b);
+
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    // Si tienen la misma prioridad, ordenar por fecha más reciente
+    return new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime();
+  });
 
   return (
     <>
@@ -206,7 +240,7 @@ export function LoanRequests() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 text-sm">
-                  {filteredRequests.map(request => {
+                  {sortedRequests.map(request => {
                     const requestUser = users.find(u => u.id === request.userId);
                     const requestBook = books.find(b => b.id === request.bookId);
 
