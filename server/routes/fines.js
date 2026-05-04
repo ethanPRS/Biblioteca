@@ -99,7 +99,38 @@ router.post('/generate', async (req, res) => {
   }
 });
 
-// PUT pay / forgive a fine
+// PUT verify and pay a fine (Verificar con Tesoreria)
+router.put('/:id/verify', async (req, res) => {
+  try {
+    // 1. Verificar en tesoreria
+    const { data: payment, error: tesoreriaError } = await supabase
+      .from('tesoreria')
+      .select('estatus_pago')
+      .eq('id_multa', req.params.id)
+      .eq('estatus_pago', 'Pagado')
+      .maybeSingle();
+
+    if (tesoreriaError) throw tesoreriaError;
+
+    if (!payment) {
+      return res.status(400).json({ error: 'Pago no encontrado en tesorería' });
+    }
+
+    // 2. Si existe, actualizar la tabla multa
+    const { error: updateError } = await supabase
+      .from('multa')
+      .update({ estatus_pago: 'Pagada' })
+      .eq('id_multa', req.params.id);
+
+    if (updateError) throw updateError;
+
+    res.json({ id: req.params.id, paymentStatus: 'Pagada' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT pay / forgive a fine (Manual override si es necesario)
 router.put('/:id', async (req, res) => {
   const { paymentStatus } = req.body;
   try {

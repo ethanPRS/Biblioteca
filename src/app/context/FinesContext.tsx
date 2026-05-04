@@ -20,6 +20,7 @@ interface FinesContextType {
   fines: Fine[];
   isLoading: boolean;
   updateFine: (fineId: number, data: Partial<Fine>) => Promise<void>;
+  verifyFine: (fineId: number) => Promise<void>;
 }
 
 const FinesContext = createContext<FinesContextType | null>(null);
@@ -80,8 +81,26 @@ export function FinesProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const verifyFine = async (fineId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/${fineId}/verify`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        setFines(prev => prev.map(f => f.id === fineId ? { ...f, paymentStatus: 'Pagada' } : f));
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to verify fine');
+      }
+    } catch (error) {
+      console.error('Error verifying fine:', error);
+      throw error;
+    }
+  };
+
   return (
-    <FinesContext.Provider value={{ fines, isLoading, updateFine }}>
+    <FinesContext.Provider value={{ fines, isLoading, updateFine, verifyFine }}>
       {children}
     </FinesContext.Provider>
   );

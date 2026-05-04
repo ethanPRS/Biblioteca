@@ -29,7 +29,7 @@ router.post('/', async (req, res) => {
   try {
     // Check if user has pending fines
     const { data: userFines, error: finesError } = await supabase
-      .from('multas')
+      .from('multa')
       .select('estatus_pago')
       .eq('id_usuario', userId)
       .eq('estatus_pago', 'Pendiente');

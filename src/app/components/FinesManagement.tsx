@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
-  Search, Bell, AlertTriangle, CheckCircle, CreditCard, DollarSign, Wallet
+  Search, Bell, AlertTriangle, CheckCircle, CreditCard, DollarSign, Wallet, Loader2, XCircle
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { NotificationBell } from './NotificationBell';
@@ -11,13 +11,16 @@ import { useLoans } from '../context/LoanContext';
 import { useFines } from '../context/FinesContext';
 import { toast } from 'sonner';
 
+import { createPortal } from 'react-dom';
+
 export function FinesManagement() {
   const { user: currentUser, users } = useAuth();
   const { books } = useBooks();
-  const { fines, updateFine } = useFines();
+  const { fines, updateFine, verifyFine } = useFines();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [verifyPopup, setVerifyPopup] = useState<{isOpen: boolean, status: 'loading' | 'success' | 'error', fineId: number | null}>({isOpen: false, status: 'loading', fineId: null});
 
   const isAdmin = currentUser?.role === 'Administrador' || currentUser?.role === 'Bibliotecario';
 
@@ -62,13 +65,27 @@ export function FinesManagement() {
     return new Date(b.fine.createdAt).getTime() - new Date(a.fine.createdAt).getTime();
   });
 
-  // Marcar como pagada: actualiza la multa específica
+  // Marcar como pagada: Verifica con tesorería
   const handlePayFine = async (fineId: number) => {
+    setVerifyPopup({ isOpen: true, status: 'loading', fineId });
+    
     try {
-      await updateFine(fineId, { paymentStatus: 'Pagada' });
-      toast.success('Multa marcada como pagada/condonada');
+      // Simular tiempo de conexión para la UX
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      await verifyFine(fineId);
+      
+      setVerifyPopup(prev => ({ ...prev, status: 'success' }));
+      
+      // Cerrar automáticamente después de éxito
+      setTimeout(() => {
+        setVerifyPopup({ isOpen: false, status: 'loading', fineId: null });
+        toast.success('El pago ha sido validado correctamente.');
+      }, 2000);
+      
     } catch (error) {
-      toast.error('Error al procesar el pago de la multa');
+      setVerifyPopup(prev => ({ ...prev, status: 'error' }));
+      toast.error('Aún no se ha realizado el pago');
     }
   };
 
@@ -288,6 +305,92 @@ export function FinesManagement() {
           
         </div>
       </div>
+
+      {/* Pop Up de Verificación con createPortal para evitar problemas de posicionamiento de CSS */}
+      {verifyPopup.isOpen && typeof document !== 'undefined' && createPortal(
+        <div 
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(23, 23, 23, 0.4)', backdropFilter: 'blur(4px)' }}
+        >
+          <div 
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
+            onClick={() => verifyPopup.status === 'error' && setVerifyPopup({ isOpen: false, status: 'loading', fineId: null })}
+          ></div>
+          
+          <div 
+            style={{ position: 'relative', backgroundColor: 'white', borderRadius: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', width: '100%', maxWidth: '22rem', padding: '2.5rem 1.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
+            className="animate-in fade-in zoom-in duration-200"
+          >
+            {/* Botón de cerrar en la esquina (X) */}
+            {(verifyPopup.status === 'success' || verifyPopup.status === 'error') && (
+               <button 
+                onClick={() => setVerifyPopup({ isOpen: false, status: 'loading', fineId: null })}
+                style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280' }}
+               >
+                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+               </button>
+            )}
+
+            {verifyPopup.status === 'loading' && (
+              <>
+                <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                  <Loader2 size={36} color="#2B74FF" className="animate-spin" />
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>Verificando Pago...</h3>
+                <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                  Validando la transacción con tesorería, por favor espera un momento.
+                </p>
+                <button 
+                  disabled
+                  style={{ width: '100%', backgroundColor: '#93C5FD', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'not-allowed', fontSize: '1rem' }}
+                >
+                  Cargando
+                </button>
+              </>
+            )}
+
+            {verifyPopup.status === 'success' && (
+              <>
+                <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: '#E0F2E9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="animate-in zoom-in"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>¡Pago Verificado!</h3>
+                <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                  El pago ha sido acreditado exitosamente. La multa ya no aparecerá como pendiente en tu estado de cuenta.
+                </p>
+                <button 
+                  onClick={() => setVerifyPopup({ isOpen: false, status: 'loading', fineId: null })}
+                  style={{ width: '100%', backgroundColor: '#22C55E', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontSize: '1rem', transition: 'background-color 0.2s' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#16a34a'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#22C55E'}
+                >
+                  Cerrar
+                </button>
+              </>
+            )}
+
+            {verifyPopup.status === 'error' && (
+              <>
+                <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="animate-in zoom-in"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>¡Pago No Encontrado!</h3>
+                <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                  Lo sentimos, pero no se ha encontrado el registro del pago en tesorería. Por favor intenta de nuevo más tarde.
+                </p>
+                <button 
+                  onClick={() => setVerifyPopup({ isOpen: false, status: 'loading', fineId: null })}
+                  style={{ width: '100%', backgroundColor: '#EF4444', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontSize: '1rem', transition: 'background-color 0.2s' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#EF4444'}
+                >
+                  Intentar de Nuevo
+                </button>
+              </>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }
