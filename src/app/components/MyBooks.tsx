@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
   BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2, 
-  Search, BookMarked, Timer
+  Search, BookMarked, Timer, FileText
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { NotificationBell } from './NotificationBell';
@@ -19,6 +19,11 @@ export function MyBooks() {
   const { settings } = useSettings();
   const { fines } = useFines();
   const [searchQuery, setSearchQuery] = useState('');
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+
+  const openReceipt = (loanId: string) => {
+    window.open(`${API_BASE_URL}/api/loans/${loanId}/receipt.pdf?userId=${encodeURIComponent(user?.id || '')}`, '_blank', 'noopener,noreferrer');
+  };
 
   // Get only this user's active loans
   const myActiveLoans = loans.filter(
@@ -234,6 +239,16 @@ export function MyBooks() {
                           </span>
                         </div>
                       </div>
+                    </div>
+
+                    <div className="px-5 pb-4">
+                      <button
+                        onClick={() => openReceipt(loan.id)}
+                        className="w-full inline-flex items-center justify-center gap-2 bg-white border border-blue-100 text-blue-700 hover:bg-blue-50 hover:border-blue-200 px-3 py-2 rounded-xl text-xs font-bold transition-colors"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Ver recibo PDF
+                      </button>
                     </div>
 
                     {/* Footer with dates */}

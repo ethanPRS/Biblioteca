@@ -133,14 +133,14 @@ export function LoansAndReturns() {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const book = books.find(b => b.id === formData.bookId);
     const selectedUser = users.find(u => u.id === formData.userId);
     if (!book || book.availableCopies <= 0) return;
 
-    addLoan({
+    await addLoan({
       userId: formData.userId,
       bookId: formData.bookId,
       borrowDate: formData.borrowDate,
@@ -380,14 +380,16 @@ export function LoansAndReturns() {
                         </td>
                         {isAdmin && (
                           <td className="px-6 py-4">
-                            {loan.status === 'Activo' && (
-                              <button 
-                                onClick={() => handleReturnClick(loan)}
-                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-xs transition-all shadow-sm"
-                              >
-                                Marcar como Devuelto
-                              </button>
-                            )}
+                            <div className="flex items-center justify-end gap-2">
+                              {loan.status === 'Activo' && (
+                                <button 
+                                  onClick={() => handleReturnClick(loan)}
+                                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-xs transition-all shadow-sm"
+                                >
+                                  Marcar como Devuelto
+                                </button>
+                              )}
+                            </div>
                           </td>
                         )}
                       </tr>

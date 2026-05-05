@@ -1,7 +1,31 @@
 import express from 'express';
 import supabase from '../db/supabase.js';
+import { generateLoanReceiptPdf, mapLoanReceipt, sendLoanReceiptEmail } from '../services/loanReceipt.js';
 
 const router = express.Router();
+
+function getRequestBaseUrl(req) {
+  return process.env.BACKEND_PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+}
+
+async function fetchLoanReceiptData(loanId) {
+  const { data, error } = await supabase
+    .from('prestamo')
+    .select(`
+      id_prestamo, id_usuario, fecha_prestamo, fecha_vencimiento,
+      usuario ( id_usuario, nombre, email, matricula_nomina, rol ),
+      ejemplar (
+        codigo_inventario,
+        libro ( titulo, autor, isbn ),
+        ubicacion ( estanteria )
+      )
+    `)
+    .eq('id_prestamo', loanId)
+    .single();
+
+  if (error) throw error;
+  return mapLoanReceipt(data);
+}
 
 // GET all loans
 router.get('/', async (req, res) => {
@@ -47,9 +71,52 @@ router.post('/', async (req, res) => {
       .insert({ id_usuario: userId, id_ejemplar: exemplarId, fecha_prestamo: borrowDate, fecha_vencimiento: dueDate, estatus: status || 'Activo' })
       .select().single();
     if (error) throw error;
-    res.status(201).json({ id: String(loan.id_prestamo), bookId, userId, borrowDate, dueDate, status: status || 'Activo', finePaid: false });
+
+    const receiptUrl = `${getRequestBaseUrl(req)}/api/loans/${loan.id_prestamo}/receipt.pdf?userId=${encodeURIComponent(String(userId))}`;
+    let emailReceipt = { sent: false, reason: 'No se pudo generar el recibo.' };
+
+    try {
+      const receipt = await fetchLoanReceiptData(loan.id_prestamo);
+      const pdfBuffer = generateLoanReceiptPdf(receipt);
+      emailReceipt = await sendLoanReceiptEmail(receipt, pdfBuffer, receiptUrl);
+      if (!emailReceipt.sent) {
+        console.warn(`[Receipt] Correo no enviado para prestamo ${loan.id_prestamo}: ${emailReceipt.reason}`);
+      }
+    } catch (receiptError) {
+      console.warn(`[Receipt] Error al procesar recibo para prestamo ${loan.id_prestamo}: ${receiptError.message}`);
+      emailReceipt = { sent: false, reason: receiptError.message };
+    }
+
+    res.status(201).json({
+      id: String(loan.id_prestamo),
+      bookId,
+      userId,
+      borrowDate,
+      dueDate,
+      status: status || 'Activo',
+      finePaid: false,
+      receiptUrl,
+      emailReceiptSent: emailReceipt.sent,
+      emailReceiptMessage: emailReceipt.reason,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// GET printable loan receipt as PDF
+router.get('/:id/receipt.pdf', async (req, res) => {
+  try {
+    const receipt = await fetchLoanReceiptData(req.params.id);
+    if (!req.query.userId || String(req.query.userId) !== receipt.userId) {
+      return res.status(403).json({ error: 'Este recibo solo esta disponible para el usuario del prestamo' });
+    }
+    const pdfBuffer = generateLoanReceiptPdf(receipt);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="recibo-prestamo-${req.params.id}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    res.status(404).json({ error: 'Recibo no encontrado' });
   }
 });
 

@@ -12,6 +12,9 @@ export interface Loan {
   loanCopyId?: number;
   condition?: string;
   fines?: any[];
+  receiptUrl?: string;
+  emailReceiptSent?: boolean;
+  emailReceiptMessage?: string;
 }
 
 const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/loans`;

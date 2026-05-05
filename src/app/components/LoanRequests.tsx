@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router';
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import { 
-  Search, Check, X, Clock, AlertCircle
+  Search, Check, X, Clock, AlertCircle, FileText
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { NotificationBell } from './NotificationBell';
@@ -22,6 +22,7 @@ export function LoanRequests() {
   const { addNotification } = useNotifications();
   
   const [searchQuery, setSearchQuery] = useState('');
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
   const isAdmin = currentUser?.role === 'Administrador' || currentUser?.role === 'Bibliotecario';
 
@@ -42,7 +43,11 @@ export function LoanRequests() {
     return userMatch || bookMatch;
   });
 
-  const handleApprove = (request: any) => {
+  const openReceipt = (loanId: string) => {
+    window.open(`${API_BASE_URL}/api/loans/${loanId}/receipt.pdf?userId=${encodeURIComponent(currentUser?.id || '')}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleApprove = async (request: any) => {
     const book = books.find(b => b.id === request.bookId);
     if (!book || book.availableCopies <= 0) {
       alert('No hay copias disponibles de este libro');
@@ -56,7 +61,7 @@ export function LoanRequests() {
     const borrowDate = new Date().toISOString().split('T')[0];
     const dueDate = new Date(Date.now() + loanDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
-    addLoan({
+    const createdLoan = await addLoan({
       userId: request.userId,
       bookId: request.bookId,
       borrowDate,
@@ -64,8 +69,10 @@ export function LoanRequests() {
       status: 'Activo'
     });
 
+    if (!createdLoan) return;
+
     // Actualizar solicitud
-    updateLoanRequest(request.id, {
+    await updateLoanRequest(request.id, {
       status: 'Aprobada',
       responseDate: new Date().toISOString().split('T')[0],
       reviewedBy: currentUser?.id
@@ -83,7 +90,7 @@ export function LoanRequests() {
     if (request.userId) {
       addNotification({
         title: '¡Tu solicitud fue aprobada!',
-        message: `Tu solicitud del libro "${book?.title || 'libro'}" ha sido aprobada. Ya puedes pasar a recogerlo.`,
+        message: `Tu solicitud del libro "${book?.title || 'libro'}" ha sido aprobada. Tu recibo de prestamo ya esta disponible.`,
         type: 'success',
         targetUserId: request.userId,
       });
@@ -297,7 +304,18 @@ export function LoanRequests() {
                                 const relatedLoan = relatedLoans[0];
                                 if (relatedLoan) {
                                   if (relatedLoan.status === 'Activo') {
-                                    return <span className="text-orange-600 font-bold text-xs bg-orange-50 px-2 py-1 rounded-md">Pendiente</span>;
+                                    return (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-orange-600 font-bold text-xs bg-orange-50 px-2 py-1 rounded-md">Pendiente</span>
+                                        <button
+                                          onClick={() => openReceipt(relatedLoan.id)}
+                                          className="inline-flex items-center gap-1 text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md text-xs font-bold transition-colors"
+                                        >
+                                          <FileText className="w-3.5 h-3.5" />
+                                          Recibo
+                                        </button>
+                                      </div>
+                                    );
                                   } else if (relatedLoan.status === 'Devuelto') {
                                     return <span className="text-green-600 font-bold text-xs bg-green-50 px-2 py-1 rounded-md">Devuelto</span>;
                                   }
