@@ -7,6 +7,47 @@ const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL || 'https://graph.facebook
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 
 /**
+ * Envía un mensaje de texto a través de la API de WhatsApp de Meta
+ * @param {string} to - Número de teléfono del destinatario
+ * @param {string} message - El mensaje a enviar
+ */
+export const sendWhatsAppMessage = async (to, message) => {
+  const cleanTo = to.replace(/\D/g, '');
+
+  if (!WHATSAPP_TOKEN) {
+    console.log(`[SIMULACIÓN WHATSAPP] Mensaje para ${cleanTo}: ${message}`);
+    return { success: true, simulated: true };
+  }
+
+  try {
+    const response = await axios.post(
+      WHATSAPP_API_URL,
+      {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanTo,
+        type: 'text',
+        text: {
+          preview_url: false,
+          body: message
+        }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error enviando mensaje de texto WhatsApp:', error?.response?.data || error.message);
+    return { success: false, error: error?.response?.data || error.message };
+  }
+};
+
+/**
  * Envía un mensaje de plantilla a través de la API de WhatsApp de Meta
  * @param {string} to - Número de teléfono del destinatario
  * @param {string} templateName - El nombre de la plantilla aprobada en Meta
