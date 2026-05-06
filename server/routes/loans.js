@@ -108,7 +108,7 @@ router.post('/', async (req, res) => {
     
     if (telefonoUsuario) {
       console.log(`[WhatsApp Debug] Intentando enviar plantilla de aprobación a ${telefonoUsuario}...`);
-      const response = await sendWhatsAppTemplate(telefonoUsuario, 'prestamo_aprobado', [
+      const response = await sendWhatsAppTemplate(telefonoUsuario, 'prestamo_aprobado_2', [
         { type: "text", text: dueDate },
         { type: "text", text: receiptUrl }
       ]);
