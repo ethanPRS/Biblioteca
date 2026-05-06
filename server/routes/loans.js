@@ -1,6 +1,7 @@
 import express from 'express';
 import supabase from '../db/supabase.js';
 import { generateLoanReceiptPdf, mapLoanReceipt, sendLoanReceiptEmail } from '../services/loanReceipt.js';
+import { sendWhatsAppMessage } from '../services/whatsapp.js';
 
 const router = express.Router();
 
@@ -25,6 +26,19 @@ async function fetchLoanReceiptData(loanId) {
 
   if (error) throw error;
   return mapLoanReceipt(data);
+}
+
+async function fetchUserPhone(userId) {
+  const { data, error } = await supabase
+    .from('usuario')
+    .select('telefono')
+    .eq('id_usuario', userId)
+    .single();
+  if (error) {
+    console.warn('Error al obtener teléfono:', error.message);
+    return null;
+  }
+  return data?.telefono;
 }
 
 // GET all loans
@@ -85,6 +99,13 @@ router.post('/', async (req, res) => {
     } catch (receiptError) {
       console.warn(`[Receipt] Error al procesar recibo para prestamo ${loan.id_prestamo}: ${receiptError.message}`);
       emailReceipt = { sent: false, reason: receiptError.message };
+    }
+
+    // [WhatsApp] Enviar mensaje de aprobación de préstamo
+    const telefonoUsuario = await fetchUserPhone(userId);
+    if (telefonoUsuario) {
+      const msj = `¡Hola! Tu préstamo del libro ha sido aprobado. Tienes hasta el ${dueDate} para devolverlo. \nAquí tienes tu recibo: ${receiptUrl}`;
+      await sendWhatsAppMessage(telefonoUsuario, msj);
     }
 
     res.status(201).json({
@@ -150,6 +171,13 @@ router.put('/:id', async (req, res) => {
           condicion_entrega: condition || 'Buen Estado',
           observaciones: notes || '',
         });
+
+        // [WhatsApp] Enviar mensaje de éxito en devolución
+        const telefonoUsuario = await fetchUserPhone(loan.id_usuario);
+        if (telefonoUsuario) {
+          const msj = `¡Hola! Hemos recibido la devolución de tu libro en la biblioteca. ¡Gracias por entregarlo a tiempo!`;
+          await sendWhatsAppMessage(telefonoUsuario, msj);
+        }
 
         // Al devolver, congelamos el monto de la multa por retraso si existe
         const { data: multaRetraso } = await supabase.from('multa')
