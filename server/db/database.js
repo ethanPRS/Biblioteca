@@ -129,6 +129,7 @@ function initializeDatabase() {
     `ALTER TABLE USUARIO ADD COLUMN nombre TEXT`,
     `ALTER TABLE USUARIO ADD COLUMN email TEXT`,
     `ALTER TABLE USUARIO ADD COLUMN avatar TEXT`,
+    `ALTER TABLE USUARIO ADD COLUMN telefono TEXT`,
     `ALTER TABLE MULTA ADD COLUMN id_prestamo INTEGER REFERENCES PRESTAMO(id_prestamo) ON DELETE CASCADE`,
   ];
   for (const sql of migrations) {

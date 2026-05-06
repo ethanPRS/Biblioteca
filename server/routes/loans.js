@@ -56,7 +56,6 @@ async function fetchReturnReceiptData(loanId) {
   return mapReturnReceipt(data);
 }
 
-// GET all loans
 router.get('/', async (req, res) => {
   try {
     const { data: prestamos, error } = await supabase
@@ -83,7 +82,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST create loan
 router.post('/', async (req, res) => {
   const { bookId, userId, borrowDate, dueDate, status, loanCopyId } = req.body;
   try {
@@ -109,15 +107,28 @@ router.post('/', async (req, res) => {
     let exemplarId = loanCopyId;
     if (!exemplarId) {
       const { data: exemplar } = await supabase
-        .from('ejemplar').select('id_ejemplar').eq('id_libro', bookId).eq('estatus', 'Disponible').limit(1).single();
+        .from('ejemplar')
+        .select('id_ejemplar')
+        .eq('id_libro', bookId)
+        .eq('estatus', 'Disponible')
+        .limit(1)
+        .single();
       if (!exemplar) return res.status(400).json({ error: 'No hay ejemplares disponibles' });
       exemplarId = exemplar.id_ejemplar;
     }
+
     await supabase.from('ejemplar').update({ estatus: 'Prestado' }).eq('id_ejemplar', exemplarId);
     const { data: loan, error } = await supabase
       .from('prestamo')
-      .insert({ id_usuario: userId, id_ejemplar: exemplarId, fecha_prestamo: borrowDate, fecha_vencimiento: dueDate, estatus: status || 'Activo' })
-      .select().single();
+      .insert({
+        id_usuario: userId,
+        id_ejemplar: exemplarId,
+        fecha_prestamo: borrowDate,
+        fecha_vencimiento: dueDate,
+        estatus: status || 'Activo'
+      })
+      .select()
+      .single();
     if (error) throw error;
 
     const receiptUrl = `${getRequestBaseUrl(req)}/api/loans/${loan.id_prestamo}/receipt.pdf?userId=${encodeURIComponent(String(userId))}`;
@@ -152,7 +163,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET printable loan receipt as PDF
 router.get('/:id/receipt.pdf', async (req, res) => {
   try {
     const receipt = await fetchLoanReceiptData(req.params.id);
@@ -183,19 +193,17 @@ router.get('/:id/return-receipt.pdf', async (req, res) => {
   }
 });
 
-// PUT update loan
 router.put('/:id', async (req, res) => {
   const { status, finePaid, returnDate, condition, notes } = req.body;
   const loanId = req.params.id;
   try {
     let returnReceiptResult = null;
-    // For returns: update ejemplar and insert devolucion BEFORE updating prestamo status,
-    // so that when SSE fires for the prestamo change the exemplar is already Disponible.
+
     if (status === 'Devuelto') {
       const { data: loan } = await supabase.from('prestamo')
         .select(`
           id_prestamo,
-          id_ejemplar, 
+          id_ejemplar,
           id_usuario,
           estatus,
           fecha_vencimiento,
@@ -232,14 +240,13 @@ router.put('/:id', async (req, res) => {
           observaciones: notes || '',
         });
 
-        // Al devolver, congelamos el monto de la multa por retraso si existe
         const { data: multaRetraso } = await supabase.from('multa')
           .select('id_multa')
           .eq('id_prestamo', loanId)
           .eq('tipo', 'Retraso')
           .eq('estatus_pago', 'Pendiente')
           .single();
-          
+
         if (multaRetraso) {
           const today = returnDate || new Date().toISOString().split('T')[0];
           const [yT, mT, dT] = today.split('-');
@@ -252,7 +259,7 @@ router.put('/:id', async (req, res) => {
 
           const diff = fechaRetorno.getTime() - fechaVenc.getTime();
           const diasRetraso = Math.max(0, Math.floor(diff / 86400000));
-          
+
           if (diasRetraso > 0) {
             const libroObj = Array.isArray(loan.ejemplar?.libro) ? loan.ejemplar.libro[0] : loan.ejemplar?.libro;
             const costoBase = libroObj?.costo_multa_base || 10;
@@ -263,12 +270,12 @@ router.put('/:id', async (req, res) => {
         }
 
         if (condition === 'Mal Estado' || condition === 'Se perdio') {
-          // No borramos la multa por retraso, se suman ambas deudas.
-
-          // libro might be an object or an array depending on foreign key
           const libroObj = Array.isArray(loan.ejemplar?.libro) ? loan.ejemplar.libro[0] : loan.ejemplar?.libro;
           const precio = libroObj?.precio || 0;
-          const { data: config } = await supabase.from('configuracion_multas').select('porcentaje_dano, porcentaje_perdida').single();
+          const { data: config } = await supabase
+            .from('configuracion_multas')
+            .select('porcentaje_dano, porcentaje_perdida')
+            .single();
           const pDano = config ? parseFloat(config.porcentaje_dano) : 0.5;
           const pPerdida = config ? parseFloat(config.porcentaje_perdida) : 1.0;
 
@@ -322,20 +329,24 @@ router.put('/:id', async (req, res) => {
         const { data: loan } = await supabase.from('prestamo').select('id_usuario').eq('id_prestamo', loanId).single();
         if (loan) {
           await supabase.from('multa').insert({
-            id_usuario: loan.id_usuario, id_prestamo: loanId, tipo: 'Retraso',
-            monto: 0, dias_retraso: 0, estatus_pago: 'Pagada',
+            id_usuario: loan.id_usuario,
+            id_prestamo: loanId,
+            tipo: 'Retraso',
+            monto: 0,
+            dias_retraso: 0,
+            estatus_pago: 'Pagada',
             fecha_generacion: new Date().toISOString().split('T')[0],
           });
         }
       }
     }
+
     res.json({ id: loanId, ...req.body, returnReceipt: returnReceiptResult });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// DELETE loan
 router.delete('/:id', async (req, res) => {
   try {
     const { error } = await supabase.from('prestamo').delete().eq('id_prestamo', req.params.id);
