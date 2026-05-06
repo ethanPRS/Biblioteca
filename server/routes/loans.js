@@ -1,7 +1,7 @@
 import express from 'express';
 import supabase from '../db/supabase.js';
 import { generateLoanReceiptPdf, mapLoanReceipt, sendLoanReceiptEmail } from '../services/loanReceipt.js';
-import { sendWhatsAppMessage } from '../services/whatsapp.js';
+import { sendWhatsAppTemplate } from '../services/whatsapp.js';
 
 const router = express.Router();
 
@@ -107,9 +107,11 @@ router.post('/', async (req, res) => {
     console.log(`[WhatsApp Debug] Teléfono encontrado: ${telefonoUsuario}`);
     
     if (telefonoUsuario) {
-      const msj = `¡Hola! Tu préstamo del libro ha sido aprobado. Tienes hasta el ${dueDate} para devolverlo. \nAquí tienes tu recibo: ${receiptUrl}`;
-      console.log(`[WhatsApp Debug] Intentando enviar mensaje a ${telefonoUsuario}...`);
-      const response = await sendWhatsAppMessage(telefonoUsuario, msj);
+      console.log(`[WhatsApp Debug] Intentando enviar plantilla de aprobación a ${telefonoUsuario}...`);
+      const response = await sendWhatsAppTemplate(telefonoUsuario, 'prestamo_aprobado', [
+        { type: "text", text: dueDate },
+        { type: "text", text: receiptUrl }
+      ]);
       console.log(`[WhatsApp Debug] Respuesta de envío:`, response);
     } else {
       console.log(`[WhatsApp Debug] No se envió mensaje porque el usuario no tiene teléfono registrado.`);
@@ -185,9 +187,8 @@ router.put('/:id', async (req, res) => {
         console.log(`[WhatsApp Debug] Teléfono encontrado: ${telefonoUsuario}`);
         
         if (telefonoUsuario) {
-          const msj = `¡Hola! Hemos recibido la devolución de tu libro en la biblioteca. ¡Gracias por entregarlo a tiempo!`;
-          console.log(`[WhatsApp Debug] Intentando enviar mensaje de devolución a ${telefonoUsuario}...`);
-          const response = await sendWhatsAppMessage(telefonoUsuario, msj);
+          console.log(`[WhatsApp Debug] Intentando enviar plantilla de devolución a ${telefonoUsuario}...`);
+          const response = await sendWhatsAppTemplate(telefonoUsuario, 'devolucion_exitosa', []);
           console.log(`[WhatsApp Debug] Respuesta de envío:`, response);
         } else {
           console.log(`[WhatsApp Debug] No se envió mensaje de devolución porque el usuario no tiene teléfono registrado.`);

@@ -7,16 +7,16 @@ const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL || 'https://graph.facebook
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 
 /**
- * Envía un mensaje de texto a través de la API de WhatsApp de Meta
- * @param {string} to - Número de teléfono del destinatario con código de país (ej. 521XXXXXXXXXX para México)
- * @param {string} message - El mensaje a enviar
+ * Envía un mensaje de plantilla a través de la API de WhatsApp de Meta
+ * @param {string} to - Número de teléfono del destinatario
+ * @param {string} templateName - El nombre de la plantilla aprobada en Meta
+ * @param {Array} parameters - Arreglo de strings con las variables de la plantilla [{type: "text", text: "valor"}]
  */
-export const sendWhatsAppMessage = async (to, message) => {
-  // Limpiar el número para asegurar que solo tenga dígitos
+export const sendWhatsAppTemplate = async (to, templateName, parameters = []) => {
   const cleanTo = to.replace(/\D/g, '');
 
   if (!WHATSAPP_TOKEN) {
-    console.log(`[SIMULACIÓN WHATSAPP] Mensaje para ${cleanTo}: ${message}`);
+    console.log(`[SIMULACIÓN WHATSAPP] Plantilla '${templateName}' enviada a ${cleanTo} con params:`, parameters);
     return { success: true, simulated: true };
   }
 
@@ -27,10 +27,18 @@ export const sendWhatsAppMessage = async (to, message) => {
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
         to: cleanTo,
-        type: 'text',
-        text: {
-          preview_url: false,
-          body: message
+        type: 'template',
+        template: {
+          name: templateName,
+          language: {
+            code: 'es_MX' // Asegúrate de que este código coincida con el idioma en el que creaste la plantilla
+          },
+          components: parameters.length > 0 ? [
+            {
+              type: 'body',
+              parameters: parameters
+            }
+          ] : []
         }
       },
       {
