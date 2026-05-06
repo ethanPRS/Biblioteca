@@ -42,6 +42,48 @@ export function LoanRequests() {
     return userMatch || bookMatch;
   });
 
+  const toDateValue = (value?: string) => {
+    if (!value) return 0;
+    return new Date(value).getTime();
+  };
+
+  const requestLoanMap = new Map<string, any>();
+  const groupedRequestKeys = Array.from(new Set(
+    sortedGroupKeySource(filteredRequests).map(request => `${request.userId}-${request.bookId}`)
+  ));
+
+  groupedRequestKeys.forEach((groupKey) => {
+    const [userId, bookIdText] = groupKey.split('-');
+    const bookId = Number(bookIdText);
+    const requestsForGroup = filteredRequests
+      .filter(request => request.userId === userId && request.bookId === bookId && request.status === 'Aprobada')
+      .sort((a, b) => toDateValue(a.requestDate) - toDateValue(b.requestDate));
+
+    const loansForGroup = loans
+      .filter(loan => loan.userId === userId && loan.bookId === bookId)
+      .sort((a, b) => toDateValue(a.borrowDate) - toDateValue(b.borrowDate));
+
+    let loanIndex = 0;
+    requestsForGroup.forEach((request) => {
+      while (
+        loanIndex < loansForGroup.length - 1 &&
+        toDateValue(loansForGroup[loanIndex].borrowDate) < toDateValue(request.requestDate)
+      ) {
+        loanIndex += 1;
+      }
+
+      const matchedLoan = loansForGroup[loanIndex];
+      if (matchedLoan) {
+        requestLoanMap.set(request.id, matchedLoan);
+        loanIndex += 1;
+      }
+    });
+  });
+
+  function sortedGroupKeySource(requests: typeof filteredRequests) {
+    return [...requests].sort((a, b) => toDateValue(a.requestDate) - toDateValue(b.requestDate));
+  }
+
   const openReceipt = (loanId: string) => {
     window.open(`${API_BASE_URL}/api/loans/${loanId}/receipt.pdf?userId=${encodeURIComponent(currentUser?.id || '')}`, '_blank', 'noopener,noreferrer');
   };
@@ -141,7 +183,7 @@ export function LoanRequests() {
       if (request.status === 'Pendiente') return 1;
 
       if (request.status === 'Aprobada') {
-        const activeLoan = loans.find(l => l.userId === request.userId && l.bookId === request.bookId && l.status === 'Activo');
+        const activeLoan = requestLoanMap.get(request.id);
         if (activeLoan) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -302,10 +344,7 @@ export function LoanRequests() {
                           <td className="px-6 py-4">
                             {(() => {
                               if (request.status === 'Aprobada') {
-                                const relatedLoans = loans.filter(
-                                  l => l.userId === request.userId && l.bookId === request.bookId
-                                ).sort((a, b) => new Date(b.borrowDate).getTime() - new Date(a.borrowDate).getTime());
-                                const relatedLoan = relatedLoans[0];
+                                const relatedLoan = requestLoanMap.get(request.id);
                                 if (relatedLoan) {
                                   if (relatedLoan.status === 'Activo') {
                                     return (
@@ -357,9 +396,7 @@ export function LoanRequests() {
                             {request.status === 'Aprobada' && (
                               <div className="flex justify-end">
                                 {(() => {
-                                  const activeLoan = loans.find(
-                                    l => l.userId === request.userId && l.bookId === request.bookId && l.status === 'Activo'
-                                  );
+                                  const activeLoan = requestLoanMap.get(request.id);
                                   if (activeLoan) {
                                     return (
                                       <Link
