@@ -23,7 +23,7 @@ interface LoanContextType {
   loans: Loan[];
   isLoading: boolean;
   addLoan: (loan: Omit<Loan, 'id'>) => Promise<Loan | null>;
-  updateLoan: (id: string, loan: Partial<Loan>) => Promise<void>;
+  updateLoan: (id: string, loan: Partial<Loan>) => Promise<{ success: boolean; error?: string }>;
   deleteLoan: (id: string) => Promise<void>;
 }
 
@@ -92,9 +92,17 @@ export function LoanProvider({ children }: { children: React.ReactNode }) {
       });
       if (res.ok) {
         await fetchLoans();
+        return { success: true };
       }
+      let error = 'No se pudo actualizar el prestamo';
+      try {
+        const data = await res.json();
+        error = data.error || error;
+      } catch {}
+      return { success: false, error };
     } catch (error) {
       console.error('Error updating loan:', error);
+      return { success: false, error: 'Error de red al actualizar el prestamo' };
     }
   };
 

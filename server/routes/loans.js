@@ -1,6 +1,13 @@
 import express from 'express';
 import supabase from '../db/supabase.js';
-import { generateLoanReceiptPdf, mapLoanReceipt, sendLoanReceiptEmail } from '../services/loanReceipt.js';
+import {
+  generateLoanReceiptPdf,
+  generateReturnReceiptPdf,
+  mapLoanReceipt,
+  mapReturnReceipt,
+  sendLoanReceiptEmail,
+  sendReturnReceiptEmail,
+} from '../services/loanReceipt.js';
 
 const router = express.Router();
 
@@ -25,6 +32,28 @@ async function fetchLoanReceiptData(loanId) {
 
   if (error) throw error;
   return mapLoanReceipt(data);
+}
+
+async function fetchReturnReceiptData(loanId) {
+  const { data, error } = await supabase
+    .from('prestamo')
+    .select(`
+      id_prestamo, id_usuario, fecha_prestamo, fecha_vencimiento,
+      usuario ( id_usuario, nombre, email, matricula_nomina, rol ),
+      ejemplar (
+        codigo_inventario,
+        libro ( titulo, autor, isbn ),
+        ubicacion ( estanteria )
+      ),
+      devolucion ( fecha_devolucion, condicion_entrega, observaciones ),
+      multa ( tipo, monto, dias_retraso, estatus_pago )
+    `)
+    .eq('id_prestamo', loanId)
+    .order('fecha_devolucion', { foreignTable: 'devolucion', ascending: false })
+    .single();
+
+  if (error) throw error;
+  return mapReturnReceipt(data);
 }
 
 // GET all loans
@@ -58,6 +87,25 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const { bookId, userId, borrowDate, dueDate, status, loanCopyId } = req.body;
   try {
+    const { data: existingLoans, error: existingLoanError } = await supabase
+      .from('prestamo')
+      .select(`
+        id_prestamo, estatus,
+        ejemplar ( id_libro )
+      `)
+      .eq('id_usuario', userId)
+      .eq('estatus', 'Activo');
+    if (existingLoanError) throw existingLoanError;
+
+    const duplicateLoan = (existingLoans || []).find((loan) => {
+      const exemplar = Array.isArray(loan.ejemplar) ? loan.ejemplar[0] : loan.ejemplar;
+      return exemplar?.id_libro === bookId;
+    });
+
+    if (duplicateLoan) {
+      return res.status(409).json({ error: 'El usuario ya tiene un prestamo activo de este libro.' });
+    }
+
     let exemplarId = loanCopyId;
     if (!exemplarId) {
       const { data: exemplar } = await supabase
@@ -120,18 +168,36 @@ router.get('/:id/receipt.pdf', async (req, res) => {
   }
 });
 
+router.get('/:id/return-receipt.pdf', async (req, res) => {
+  try {
+    const receipt = await fetchReturnReceiptData(req.params.id);
+    if (!req.query.userId || String(req.query.userId) !== receipt.userId) {
+      return res.status(403).json({ error: 'Este recibo solo esta disponible para el usuario del prestamo' });
+    }
+    const pdfBuffer = generateReturnReceiptPdf(receipt);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="recibo-devolucion-${req.params.id}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    res.status(404).json({ error: 'Recibo no encontrado' });
+  }
+});
+
 // PUT update loan
 router.put('/:id', async (req, res) => {
   const { status, finePaid, returnDate, condition, notes } = req.body;
   const loanId = req.params.id;
   try {
+    let returnReceiptResult = null;
     // For returns: update ejemplar and insert devolucion BEFORE updating prestamo status,
     // so that when SSE fires for the prestamo change the exemplar is already Disponible.
     if (status === 'Devuelto') {
       const { data: loan } = await supabase.from('prestamo')
         .select(`
+          id_prestamo,
           id_ejemplar, 
           id_usuario,
+          estatus,
           fecha_vencimiento,
           ejemplar (
             id_libro,
@@ -142,6 +208,21 @@ router.put('/:id', async (req, res) => {
         .single();
 
       if (loan) {
+        if (loan.estatus === 'Devuelto') {
+          return res.status(409).json({ error: 'Este prestamo ya fue marcado como devuelto.' });
+        }
+
+        const { data: existingReturn, error: existingReturnError } = await supabase
+          .from('devolucion')
+          .select('id_devolucion')
+          .eq('id_prestamo', loanId)
+          .limit(1)
+          .single();
+        if (existingReturnError && existingReturnError.code !== 'PGRST116') throw existingReturnError;
+        if (existingReturn) {
+          return res.status(409).json({ error: 'Ya existe una devolucion registrada para este prestamo.' });
+        }
+
         const estatusEjemplar = condition === 'Se perdio' ? 'Perdido' : 'Disponible';
         await supabase.from('ejemplar').update({ estatus: estatusEjemplar }).eq('id_ejemplar', loan.id_ejemplar);
         await supabase.from('devolucion').insert({
@@ -206,6 +287,28 @@ router.put('/:id', async (req, res) => {
             });
           }
         }
+
+        const returnReceiptUrl = `${getRequestBaseUrl(req)}/api/loans/${loanId}/return-receipt.pdf?userId=${encodeURIComponent(String(loan.id_usuario))}`;
+        try {
+          const returnReceipt = await fetchReturnReceiptData(loanId);
+          const pdfBuffer = generateReturnReceiptPdf(returnReceipt);
+          const emailReceipt = await sendReturnReceiptEmail(returnReceipt, pdfBuffer, returnReceiptUrl);
+          returnReceiptResult = {
+            receiptUrl: returnReceiptUrl,
+            emailSent: emailReceipt.sent,
+            emailMessage: emailReceipt.reason || null,
+          };
+          if (!emailReceipt.sent) {
+            console.warn(`[ReturnReceipt] Correo no enviado para prestamo ${loanId}: ${emailReceipt.reason}`);
+          }
+        } catch (returnReceiptError) {
+          console.warn(`[ReturnReceipt] Error al procesar recibo de devolucion para prestamo ${loanId}: ${returnReceiptError.message}`);
+          returnReceiptResult = {
+            receiptUrl: returnReceiptUrl,
+            emailSent: false,
+            emailMessage: returnReceiptError.message,
+          };
+        }
       }
     }
 
@@ -226,7 +329,7 @@ router.put('/:id', async (req, res) => {
         }
       }
     }
-    res.json({ id: loanId, ...req.body });
+    res.json({ id: loanId, ...req.body, returnReceipt: returnReceiptResult });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

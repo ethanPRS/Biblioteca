@@ -1,37 +1,45 @@
 import React, { useState } from 'react';
 import { UserProfileDropdown } from "./UserProfileDropdown";
-import { 
-  Search, Bell, AlertTriangle, CheckCircle, CreditCard, DollarSign, Wallet, Loader2, XCircle
+import {
+  Search, AlertTriangle, CheckCircle, CreditCard, DollarSign, Wallet, Loader2, FileText
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { NotificationBell } from './NotificationBell';
 import { useAuth } from '../context/AuthContext';
 import { useBooks } from '../context/BookContext';
-import { useLoans } from '../context/LoanContext';
 import { useFines } from '../context/FinesContext';
 import { toast } from 'sonner';
-
 import { createPortal } from 'react-dom';
 
 export function FinesManagement() {
   const { user: currentUser, users } = useAuth();
   const { books } = useBooks();
-  const { fines, updateFine, verifyFine } = useFines();
+  const { fines, verifyFine } = useFines();
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
-  const [verifyPopup, setVerifyPopup] = useState<{isOpen: boolean, status: 'loading' | 'success' | 'error', fineId: number | null}>({isOpen: false, status: 'loading', fineId: null});
+  const [verifyPopup, setVerifyPopup] = useState<{ isOpen: boolean; status: 'loading' | 'success' | 'error'; fineId: number | null }>({
+    isOpen: false,
+    status: 'loading',
+    fineId: null
+  });
 
   const isAdmin = currentUser?.role === 'Administrador' || currentUser?.role === 'Bibliotecario';
 
-  // Filtrar multas visibles (Admin ve todas, Usuario ve solo las suyas)
+  const openReturnReceipt = (loanId: string) => {
+    window.open(
+      `${API_BASE_URL}/api/loans/${loanId}/return-receipt.pdf?userId=${encodeURIComponent(currentUser?.id || '')}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+
   const visibleFines = isAdmin
     ? fines
     : fines.filter(f => f.userId === currentUser?.id);
 
-  // Filtrar por búsqueda (nombre del libro o usuario) y select
   const filteredFines = visibleFines.filter(fine => {
-    // Filtro por dropdown de usuario
     if (isAdmin && selectedUserId !== 'all' && fine.userId !== selectedUserId) {
       return false;
     }
@@ -41,13 +49,11 @@ export function FinesManagement() {
     const searchLower = searchQuery.toLowerCase();
     const userMatch = fineUser?.name.toLowerCase().includes(searchLower) || fineUser?.username.toLowerCase().includes(searchLower);
     const bookMatch = fineBook?.title.toLowerCase().includes(searchLower);
-    return userMatch || bookMatch;
+    return Boolean(userMatch || bookMatch);
   });
 
-  // Totales desde la BD
   let totalPending = 0;
   let totalPaid = 0;
-
   for (const fine of filteredFines) {
     if (fine.paymentStatus === 'Pendiente') totalPending += fine.amount;
     else totalPaid += fine.amount;
@@ -65,38 +71,31 @@ export function FinesManagement() {
     return new Date(b.fine.createdAt).getTime() - new Date(a.fine.createdAt).getTime();
   });
 
-  // Marcar como pagada: Verifica con tesorería
   const handlePayFine = async (fineId: number) => {
     setVerifyPopup({ isOpen: true, status: 'loading', fineId });
-    
     try {
-      // Simular tiempo de conexión para la UX
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
       await verifyFine(fineId);
-      
       setVerifyPopup(prev => ({ ...prev, status: 'success' }));
       toast.success('El pago ha sido validado correctamente.');
-      
-    } catch (error) {
+    } catch {
       setVerifyPopup(prev => ({ ...prev, status: 'error' }));
-      toast.error('Aún no se ha realizado el pago');
+      toast.error('Aun no se ha realizado el pago');
     }
   };
 
   return (
     <>
-      {/* Topbar */}
       <header className="h-16 md:h-20 bg-white border-b border-neutral-100 flex items-center justify-between px-4 pl-[68px] lg:px-8 shrink-0 shadow-sm z-10 relative gap-4">
         <div className="relative flex-1 max-w-[700px] flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-neutral-400 w-4 h-4 md:w-5 md:h-5" />
-            <input 
+            <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-full py-2 pl-9 pr-3 md:py-2.5 md:pl-12 md:pr-4 text-xs md:text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all placeholder:text-neutral-400" 
-              placeholder="Buscar por nombre, matrícula o libro..." 
+              className="w-full bg-[#F8FAFC] border border-neutral-200 rounded-full py-2 pl-9 pr-3 md:py-2.5 md:pl-12 md:pr-4 text-xs md:text-sm font-medium focus:outline-none focus:border-[#2B74FF] focus:ring-2 focus:ring-[#2B74FF]/20 transition-all placeholder:text-neutral-400"
+              placeholder="Buscar por nombre, matricula o libro..."
             />
           </div>
 
@@ -125,21 +124,18 @@ export function FinesManagement() {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#F8FAFC]">
         <div className="max-w-[1400px] mx-auto">
-          
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-8 gap-4">
             <div>
               <h1 className="text-2xl md:text-[32px] font-bold text-gray-900 tracking-tight">
-                {isAdmin ? 'Gestión de Multas' : 'Mis Infracciones'}
+                {isAdmin ? 'Gestion de Multas' : 'Mis Infracciones'}
               </h1>
               <p className="text-sm md:text-base text-neutral-400 font-medium mt-1">
-                {isAdmin ? 'Control de recargos por devoluciones atrasadas' : 'Revisa tus recargos pendientes por entregas tardías'}
+                {isAdmin ? 'Control de recargos por devoluciones atrasadas' : 'Revisa tus recargos pendientes por entregas tardias'}
               </p>
             </div>
-            
-            {/* Resumen rápido de multas */}
+
             <div className="flex gap-4">
               <div className="bg-white border border-red-100 rounded-2xl px-5 py-3 flex items-center gap-4 shadow-sm">
                 <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
@@ -165,7 +161,6 @@ export function FinesManagement() {
             </div>
           </div>
 
-          {/* Fines Table */}
           <div className="bg-white border border-neutral-200 rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -176,7 +171,7 @@ export function FinesManagement() {
                     <th className="px-6 py-4">Tipo/Retraso</th>
                     <th className="px-6 py-4">Monto ($)</th>
                     <th className="px-6 py-4">Estatus</th>
-                    <th className="px-6 py-4 text-right">Acción</th>
+                    <th className="px-6 py-4 text-right">Accion</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 text-sm">
@@ -186,8 +181,6 @@ export function FinesManagement() {
 
                     return (
                       <tr key={fine.id} className="hover:bg-[#F8FAFC]/50 transition-colors group">
-
-                        {/* Usuario (Solo admin) */}
                         {isAdmin && (
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
@@ -204,47 +197,41 @@ export function FinesManagement() {
                           </td>
                         )}
 
-                        {/* Libro */}
                         <td className="px-6 py-4 max-w-[200px]">
                           <div className="flex flex-col">
                             <p className="font-semibold text-gray-900 line-clamp-1 mb-0.5" title={fineBook?.title}>
                               {fineBook?.title || 'Libro Eliminado'}
                             </p>
                             <p className="text-xs text-neutral-400">
-                              Venció el {new Date(fine.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              Vencio el {new Date(fine.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </p>
                           </div>
                         </td>
 
-                        {/* Tipo / Retraso */}
                         <td className="px-6 py-4">
                           <div className="flex flex-col">
                             <span className={`font-bold ${fine.type === 'Retraso' ? 'text-orange-600' : 'text-red-600'}`}>
                               {fine.type}
                             </span>
                             {fine.type === 'Retraso' && (
-                              <span className="text-xs text-neutral-500 font-medium">{daysOverdue} días de demora</span>
+                              <span className="text-xs text-neutral-500 font-medium">{daysOverdue} dias de demora</span>
                             )}
                           </div>
                         </td>
 
-                        {/* Monto */}
                         <td className="px-6 py-4">
                           <span className={`font-bold text-base ${isPaid ? 'text-neutral-400 line-through' : 'text-gray-900'}`}>
                             ${amount.toFixed(2)}
                           </span>
                         </td>
 
-                        {/* Estatus */}
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold
-                            ${isPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${isPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                             {isPaid ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
                             {isPaid ? 'Pagada' : 'Pendiente'}
                           </span>
                         </td>
 
-                        {/* Acciones */}
                         <td className="px-6 py-4 text-right">
                           {!isPaid ? (
                             isAdmin ? (
@@ -256,19 +243,28 @@ export function FinesManagement() {
                                 Revisar Pago
                               </button>
                             ) : (
-                              <button
-                                onClick={() => {
-                                  toast.info('Instrucciones de Pago', {
-                                    description: `Dirígete físicamente a la biblioteca para saldar tu multa pendiente por la cantidad de $${amount.toFixed(2)} MXN a la brevedad posible.`,
-                                    duration: 5000,
-                                    icon: <CreditCard className="w-5 h-5 text-[#2B74FF]" />
-                                  });
-                                }}
-                                className="inline-flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-900 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
-                              >
-                                <CreditCard className="w-3.5 h-3.5" />
-                                Instrucciones
-                              </button>
+                              <div className="inline-flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    toast.info('Instrucciones de Pago', {
+                                      description: `Dirigete fisicamente a la biblioteca para saldar tu multa pendiente por la cantidad de $${amount.toFixed(2)} MXN a la brevedad posible.`,
+                                      duration: 5000,
+                                      icon: <CreditCard className="w-5 h-5 text-[#2B74FF]" />
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-900 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
+                                >
+                                  <CreditCard className="w-3.5 h-3.5" />
+                                  Instrucciones
+                                </button>
+                                <button
+                                  onClick={() => openReturnReceipt(fine.loanId)}
+                                  className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  Recibo
+                                </button>
+                              </div>
                             )
                           ) : (
                             <span className="text-neutral-400 text-xs font-semibold uppercase tracking-wider">Completado</span>
@@ -277,7 +273,7 @@ export function FinesManagement() {
                       </tr>
                     );
                   })}
-                  
+
                   {finesData.length === 0 && (
                     <tr>
                       <td colSpan={isAdmin ? 6 : 5} className="px-6 py-16 text-center">
@@ -285,9 +281,9 @@ export function FinesManagement() {
                           <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
                             <CheckCircle className="w-8 h-8 text-green-500" />
                           </div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-1">¡Sin infracciones!</h3>
+                          <h3 className="text-lg font-bold text-gray-900 mb-1">Sin infracciones</h3>
                           <p className="text-neutral-500 text-sm max-w-sm">
-                            No se detectaron préstamos con retraso o multas pendientes.
+                            No se detectaron prestamos con retraso o multas pendientes.
                           </p>
                         </div>
                       </td>
@@ -297,32 +293,29 @@ export function FinesManagement() {
               </table>
             </div>
           </div>
-          
         </div>
       </div>
 
-      {/* Pop Up de Verificación con createPortal para evitar problemas de posicionamiento de CSS */}
       {verifyPopup.isOpen && typeof document !== 'undefined' && createPortal(
-        <div 
+        <div
           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(23, 23, 23, 0.4)', backdropFilter: 'blur(4px)' }}
         >
-          <div 
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
+          <div
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             onClick={() => verifyPopup.status === 'error' && setVerifyPopup({ isOpen: false, status: 'loading', fineId: null })}
           ></div>
-          
-          <div 
+
+          <div
             style={{ position: 'relative', backgroundColor: 'white', borderRadius: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', width: '100%', maxWidth: '22rem', padding: '2.5rem 1.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
             className="animate-in fade-in zoom-in duration-200"
           >
-            {/* Botón de cerrar en la esquina (X) */}
             {(verifyPopup.status === 'success' || verifyPopup.status === 'error') && (
-               <button 
+              <button
                 onClick={() => setVerifyPopup({ isOpen: false, status: 'loading', fineId: null })}
                 style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280' }}
-               >
-                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-               </button>
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
             )}
 
             {verifyPopup.status === 'loading' && (
@@ -332,9 +325,9 @@ export function FinesManagement() {
                 </div>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>Verificando Pago...</h3>
                 <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
-                  Validando la transacción con tesorería, por favor espera un momento.
+                  Validando la transaccion con tesoreria, por favor espera un momento.
                 </p>
-                <button 
+                <button
                   disabled
                   style={{ width: '100%', backgroundColor: '#93C5FD', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'not-allowed', fontSize: '1rem' }}
                 >
@@ -348,11 +341,11 @@ export function FinesManagement() {
                 <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: '#E0F2E9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="animate-in zoom-in"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 </div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>¡Pago Verificado!</h3>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>Pago Verificado</h3>
                 <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
-                  El pago ha sido acreditado exitosamente. La multa ya no aparecerá como pendiente en tu estado de cuenta.
+                  El pago ha sido acreditado exitosamente. La multa ya no aparecera como pendiente en tu estado de cuenta.
                 </p>
-                <button 
+                <button
                   onClick={() => setVerifyPopup({ isOpen: false, status: 'loading', fineId: null })}
                   style={{ width: '100%', backgroundColor: '#22C55E', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontSize: '1rem', transition: 'background-color 0.2s' }}
                   onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#16a34a'}
@@ -368,11 +361,11 @@ export function FinesManagement() {
                 <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="animate-in zoom-in"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
                 </div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>¡Pago No Encontrado!</h3>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>Pago No Encontrado</h3>
                 <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
-                  Lo sentimos, pero no se ha encontrado el registro del pago en tesorería. Por favor intenta de nuevo más tarde.
+                  Lo sentimos, pero no se ha encontrado el registro del pago en tesoreria. Por favor intenta de nuevo mas tarde.
                 </p>
-                <button 
+                <button
                   onClick={() => setVerifyPopup({ isOpen: false, status: 'loading', fineId: null })}
                   style={{ width: '100%', backgroundColor: '#EF4444', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontSize: '1rem', transition: 'background-color 0.2s' }}
                   onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}

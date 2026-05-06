@@ -27,8 +27,59 @@ function formatDate(value) {
   return `${day}/${month}/${year}`;
 }
 
+function formatCurrency(value) {
+  const amount = Number(value || 0);
+  return `${amount.toFixed(2)} MXN`;
+}
+
 function drawText(text, x, y, size = 10, font = 'F1') {
   return `BT /${font} ${size} Tf ${x} ${y} Td (${pdfText(text)}) Tj ET`;
+}
+
+function estimateTextWidth(text, size = 10, font = 'F1') {
+  const cleaned = cleanText(text);
+  const baseFactor = font === 'F2' ? 0.58 : 0.54;
+  let total = 0;
+
+  for (const char of cleaned) {
+    if (char === ' ') total += 0.28;
+    else if ('ilI1.,:;|'.includes(char)) total += 0.22;
+    else if ('MW@#%&'.includes(char)) total += 0.9;
+    else if ('ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'.includes(char)) total += 0.66;
+    else total += baseFactor;
+  }
+
+  return total * size;
+}
+
+function fitTextToWidth(text, maxWidth, preferredSize = 10, font = 'F1', minSize = 7) {
+  const cleaned = cleanText(text) || 'N/A';
+  let size = preferredSize;
+
+  while (size > minSize && estimateTextWidth(cleaned, size, font) > maxWidth) {
+    size -= 0.25;
+  }
+
+  if (estimateTextWidth(cleaned, size, font) <= maxWidth) {
+    return { text: cleaned, size };
+  }
+
+  const suffix = '...';
+  let shortened = cleaned;
+
+  while (shortened.length > 1 && estimateTextWidth(`${shortened}${suffix}`, size, font) > maxWidth) {
+    shortened = shortened.slice(0, -1).trimEnd();
+  }
+
+  return {
+    text: `${shortened || cleaned.slice(0, 1)}${suffix}`,
+    size,
+  };
+}
+
+function drawFittedText(text, x, y, maxWidth, size = 10, font = 'F1', minSize = 7) {
+  const fitted = fitTextToWidth(text, maxWidth, size, font, minSize);
+  return drawText(fitted.text, x, y, fitted.size, font);
 }
 
 function drawLine(x1, y1, x2, y2) {
@@ -280,6 +331,40 @@ export function mapLoanReceipt(row) {
   };
 }
 
+function normalizeFineType(type) {
+  const normalized = cleanText(type).toLowerCase();
+  if (normalized.includes('retras')) return 'Retraso';
+  if (normalized.includes('dan')) return 'Dano';
+  if (normalized.includes('perd')) return 'Perdida';
+  return cleanText(type) || 'Cargo';
+}
+
+export function mapReturnReceipt(row) {
+  const base = mapLoanReceipt(row);
+  const returnInfo = Array.isArray(row.devolucion) ? row.devolucion[0] : row.devolucion;
+  const fines = Array.isArray(row.multa) ? row.multa : [];
+  const fineItems = fines.map((fine) => ({
+    type: normalizeFineType(fine.tipo),
+    amount: Number(fine.monto || 0),
+    daysLate: Number(fine.dias_retraso || 0),
+    status: cleanText(fine.estatus_pago || 'Pendiente'),
+  }));
+  const totalCost = fineItems.reduce((sum, fine) => sum + fine.amount, 0);
+  const costLabel = fineItems.length
+    ? fineItems.map((fine) => `${fine.type}: ${formatCurrency(fine.amount)}`).join(' | ')
+    : formatCurrency(0);
+
+  return {
+    ...base,
+    returnDate: returnInfo?.fecha_devolucion || row.returnDate || null,
+    returnCondition: returnInfo?.condicion_entrega || 'Buen Estado',
+    returnNotes: returnInfo?.observaciones || '',
+    totalCost,
+    costLabel,
+    fineItems,
+  };
+}
+
 export function generateLoanReceiptPdf(receipt) {
   const logoImage = loadLogoImage();
   const logoPlacement = fitImage(logoImage, 48, 650, 216, 68);
@@ -301,35 +386,35 @@ export function generateLoanReceiptPdf(receipt) {
     drawRect(36, 536, 538, 56),
     drawLine(360, 536, 360, 592),
     drawText('NOMBRE:', 42, 574, 10, 'F2'),
-    drawText(receipt.userName, 108, 574, 10, 'F1'),
+    drawFittedText(receipt.userName, 108, 574, 242, 10, 'F1', 8),
     drawText('CORREO:', 42, 554, 10, 'F2'),
-    drawText(receipt.userEmail || 'N/A', 108, 554, 9, 'F1'),
-    drawText('CLAVE:', 366, 574, 10, 'F2'),
-    drawText(receipt.username, 424, 574, 10, 'F1'),
+    drawFittedText(receipt.userEmail || 'N/A', 108, 554, 242, 9, 'F1', 7),
+    drawText('MATRICULA:', 366, 574, 10, 'F2'),
+    drawFittedText(receipt.username, 444, 574, 124, 10, 'F1', 8),
 
     drawRect(36, 492, 538, 44),
     drawLine(220, 492, 220, 536),
     drawLine(360, 492, 360, 536),
     drawText('ROL:', 42, 518, 10, 'F2'),
-    drawText(receipt.userRole, 74, 518, 10, 'F1'),
-    drawText('EJEMPLAR:', 226, 518, 10, 'F2'),
-    drawText(receipt.copyCode, 298, 518, 10, 'F1'),
+    drawFittedText(receipt.userRole, 74, 518, 136, 10, 'F1', 8),
+    drawText('CODIGO:', 226, 518, 10, 'F2'),
+    drawFittedText(receipt.copyCode, 278, 518, 76, 10, 'F1', 8),
     drawText('DIAS:', 366, 518, 10, 'F2'),
     drawText('14', 404, 518, 10, 'F1'),
 
     drawRect(36, 448, 538, 44),
     drawLine(360, 448, 360, 492),
     drawText('TITULO:', 42, 474, 10, 'F2'),
-    drawText(receipt.bookTitle, 100, 474, 10, 'F1'),
+    drawFittedText(receipt.bookTitle, 100, 474, 252, 10, 'F1', 8),
     drawText('ISBN:', 366, 474, 10, 'F2'),
-    drawText(receipt.isbn, 426, 474, 10, 'F1'),
+    drawFittedText(receipt.isbn, 426, 474, 142, 10, 'F1', 8),
 
     drawRect(36, 414, 538, 34),
     drawLine(306, 414, 306, 448),
     drawText('FECHA DE PRESTAMO:', 42, 428, 10, 'F2'),
-    drawText(formatDate(receipt.borrowDate), 190, 428, 10, 'F1'),
+    drawFittedText(formatDate(receipt.borrowDate), 190, 428, 108, 10, 'F1', 8),
     drawText('FECHA DE ENTREGA:', 314, 428, 10, 'F2'),
-    drawText(formatDate(receipt.dueDate), 462, 428, 10, 'F1'),
+    drawFittedText(formatDate(receipt.dueDate), 462, 428, 106, 10, 'F1', 8),
 
     drawText('El libro autorizado en préstamo se entrega para uso académico y debe devolverse en buen estado.', 42, 390, 8, 'F1'),
     drawText('El usuario se compromete a cumplir la fecha de entrega y las politicas de biblioteca.', 42, 376, 8, 'F1'),
@@ -343,7 +428,76 @@ export function generateLoanReceiptPdf(receipt) {
   return buildPdf(commands, logoImage);
 }
 
-export async function sendLoanReceiptEmail(receipt, pdfBuffer, receiptUrl) {
+export function generateReturnReceiptPdf(receipt) {
+  const logoImage = loadLogoImage();
+  const logoPlacement = fitImage(logoImage, 48, 650, 216, 68);
+  const commands = [
+    '0.08 0.17 0.35 RG',
+    '1.4 w',
+    drawRect(36, 642, 240, 82),
+    logoImage ? drawImage('Logo', logoPlacement.x, logoPlacement.y, logoPlacement.width, logoPlacement.height) : drawText('DUCKY UNIVERSITY', 58, 682, 18, 'F2'),
+
+    '0 0 0 RG',
+    drawText('DEVOLUCION DE LIBROS BIBLIOTECA', 284, 700, 14, 'F2'),
+    drawLine(288, 680, 574, 680),
+    drawText('La primera, la mejor....', 360, 640, 14, 'F1'),
+
+    drawRect(394, 592, 180, 22),
+    drawText('FECHA', 400, 599, 10, 'F1'),
+    drawFittedText(formatDate(receipt.returnDate), 456, 599, 112, 10, 'F2', 8),
+
+    drawRect(36, 536, 538, 56),
+    drawLine(360, 536, 360, 592),
+    drawText('NOMBRE:', 42, 574, 10, 'F2'),
+    drawFittedText(receipt.userName, 108, 574, 242, 10, 'F1', 8),
+    drawText('CORREO:', 42, 554, 10, 'F2'),
+    drawFittedText(receipt.userEmail || 'N/A', 108, 554, 242, 9, 'F1', 7),
+    drawText('MATRICULA:', 366, 574, 10, 'F2'),
+    drawFittedText(receipt.username, 444, 574, 124, 10, 'F1', 8),
+
+    drawRect(36, 492, 538, 44),
+    drawLine(220, 492, 220, 536),
+    drawLine(360, 492, 360, 536),
+    drawText('ROL:', 42, 518, 10, 'F2'),
+    drawFittedText(receipt.userRole, 74, 518, 136, 10, 'F1', 8),
+    drawText('CODIGO:', 226, 518, 10, 'F2'),
+    drawFittedText(receipt.copyCode, 278, 518, 76, 10, 'F1', 8),
+    drawText('COSTO:', 366, 518, 10, 'F2'),
+    drawFittedText(formatCurrency(receipt.totalCost), 414, 518, 154, 10, 'F1', 8),
+
+    drawRect(36, 448, 538, 44),
+    drawLine(360, 448, 360, 492),
+    drawText('TITULO:', 42, 474, 10, 'F2'),
+    drawFittedText(receipt.bookTitle, 100, 474, 252, 10, 'F1', 8),
+    drawText('ISBN:', 366, 474, 10, 'F2'),
+    drawFittedText(receipt.isbn, 426, 474, 142, 10, 'F1', 8),
+
+    drawRect(36, 404, 538, 44),
+    drawLine(306, 404, 306, 448),
+    drawText('FECHA LIMITE:', 42, 428, 10, 'F2'),
+    drawFittedText(formatDate(receipt.dueDate), 142, 428, 156, 10, 'F1', 8),
+    drawText('FECHA DE DEVOLUCION:', 314, 428, 10, 'F2'),
+    drawFittedText(formatDate(receipt.returnDate), 466, 428, 102, 10, 'F1', 8),
+
+    drawRect(36, 360, 538, 44),
+    drawText('CONDICION:', 42, 386, 10, 'F2'),
+    drawFittedText(receipt.returnCondition, 118, 386, 444, 10, 'F1', 8),
+
+    drawText(`Folio DEV-${receipt.loanId}`, 450, 238, 8, 'F1'),
+  ];
+
+  return buildPdf(commands, logoImage);
+}
+
+async function sendReceiptEmail({
+  receipt,
+  pdfBuffer,
+  receiptUrl,
+  subject,
+  textLines,
+  html,
+  filename,
+}) {
   const required = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
   const missing = required.filter(key => !process.env[key]);
 
@@ -367,8 +521,28 @@ export async function sendLoanReceiptEmail(receipt, pdfBuffer, receiptUrl) {
   await transporter.sendMail({
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: receipt.userEmail,
+    subject,
+    text: textLines.join('\n'),
+    html,
+    attachments: [
+      {
+        filename,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      },
+    ],
+  });
+
+  return { sent: true };
+}
+
+export async function sendLoanReceiptEmail(receipt, pdfBuffer, receiptUrl) {
+  return sendReceiptEmail({
+    receipt,
+    pdfBuffer,
+    receiptUrl,
     subject: `Recibo de prestamo - ${receipt.bookTitle}`,
-    text: [
+    textLines: [
       `Hola ${receipt.userName},`,
       '',
       `Tu prestamo del libro "${receipt.bookTitle}" fue aprobado.`,
@@ -377,7 +551,7 @@ export async function sendLoanReceiptEmail(receipt, pdfBuffer, receiptUrl) {
       `Puedes ver o imprimir tu recibo aqui: ${receiptUrl}`,
       '',
       'Este recibo no representa ningun cobro.',
-    ].join('\n'),
+    ],
     html: `
       <p>Hola ${receipt.userName},</p>
       <p>Tu prestamo del libro <strong>${receipt.bookTitle}</strong> fue aprobado.</p>
@@ -385,14 +559,32 @@ export async function sendLoanReceiptEmail(receipt, pdfBuffer, receiptUrl) {
       <p><a href="${receiptUrl}">Ver o imprimir recibo PDF</a></p>
       <p>Este recibo no representa ningun cobro.</p>
     `,
-    attachments: [
-      {
-        filename: `recibo-prestamo-${receipt.loanId}.pdf`,
-        content: pdfBuffer,
-        contentType: 'application/pdf',
-      },
-    ],
+    filename: `recibo-prestamo-${receipt.loanId}.pdf`,
   });
+}
 
-  return { sent: true };
+export async function sendReturnReceiptEmail(receipt, pdfBuffer, receiptUrl) {
+  return sendReceiptEmail({
+    receipt,
+    pdfBuffer,
+    receiptUrl,
+    subject: `Recibo de devolucion - ${receipt.bookTitle}`,
+    textLines: [
+      `Hola ${receipt.userName},`,
+      '',
+      `Hemos registrado la devolucion del libro "${receipt.bookTitle}".`,
+      `Fecha de devolucion: ${formatDate(receipt.returnDate)}.`,
+      `Costo total registrado: ${formatCurrency(receipt.totalCost)}.`,
+      '',
+      `Puedes ver o imprimir tu recibo aqui: ${receiptUrl}`,
+    ],
+    html: `
+      <p>Hola ${receipt.userName},</p>
+      <p>Hemos registrado la devolucion del libro <strong>${receipt.bookTitle}</strong>.</p>
+      <p><strong>Fecha de devolucion:</strong> ${formatDate(receipt.returnDate)}</p>
+      <p><strong>Costo total registrado:</strong> ${formatCurrency(receipt.totalCost)}</p>
+      <p><a href="${receiptUrl}">Ver o imprimir recibo PDF</a></p>
+    `,
+    filename: `recibo-devolucion-${receipt.loanId}.pdf`,
+  });
 }

@@ -56,6 +56,17 @@ router.put('/:id', async (req, res) => {
   const { status } = req.body;
   try {
     if (status) {
+      const { data: existingRequest, error: existingRequestError } = await supabase
+        .from('lista_espera')
+        .select('id_lista_espera, estatus')
+        .eq('id_lista_espera', req.params.id)
+        .single();
+      if (existingRequestError) throw existingRequestError;
+
+      if (existingRequest.estatus !== 'Pendiente') {
+        return res.status(409).json({ error: 'Esta solicitud ya fue procesada.' });
+      }
+
       const { error } = await supabase.from('lista_espera').update({ estatus: status }).eq('id_lista_espera', req.params.id);
       if (error) throw error;
     }
