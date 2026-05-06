@@ -102,10 +102,17 @@ router.post('/', async (req, res) => {
     }
 
     // [WhatsApp] Enviar mensaje de aprobación de préstamo
+    console.log(`[WhatsApp Debug] Buscando teléfono para el usuario: ${userId}`);
     const telefonoUsuario = await fetchUserPhone(userId);
+    console.log(`[WhatsApp Debug] Teléfono encontrado: ${telefonoUsuario}`);
+    
     if (telefonoUsuario) {
       const msj = `¡Hola! Tu préstamo del libro ha sido aprobado. Tienes hasta el ${dueDate} para devolverlo. \nAquí tienes tu recibo: ${receiptUrl}`;
-      await sendWhatsAppMessage(telefonoUsuario, msj);
+      console.log(`[WhatsApp Debug] Intentando enviar mensaje a ${telefonoUsuario}...`);
+      const response = await sendWhatsAppMessage(telefonoUsuario, msj);
+      console.log(`[WhatsApp Debug] Respuesta de envío:`, response);
+    } else {
+      console.log(`[WhatsApp Debug] No se envió mensaje porque el usuario no tiene teléfono registrado.`);
     }
 
     res.status(201).json({
@@ -173,10 +180,17 @@ router.put('/:id', async (req, res) => {
         });
 
         // [WhatsApp] Enviar mensaje de éxito en devolución
+        console.log(`[WhatsApp Debug] Buscando teléfono para devolución. Usuario: ${loan.id_usuario}`);
         const telefonoUsuario = await fetchUserPhone(loan.id_usuario);
+        console.log(`[WhatsApp Debug] Teléfono encontrado: ${telefonoUsuario}`);
+        
         if (telefonoUsuario) {
           const msj = `¡Hola! Hemos recibido la devolución de tu libro en la biblioteca. ¡Gracias por entregarlo a tiempo!`;
-          await sendWhatsAppMessage(telefonoUsuario, msj);
+          console.log(`[WhatsApp Debug] Intentando enviar mensaje de devolución a ${telefonoUsuario}...`);
+          const response = await sendWhatsAppMessage(telefonoUsuario, msj);
+          console.log(`[WhatsApp Debug] Respuesta de envío:`, response);
+        } else {
+          console.log(`[WhatsApp Debug] No se envió mensaje de devolución porque el usuario no tiene teléfono registrado.`);
         }
 
         // Al devolver, congelamos el monto de la multa por retraso si existe
