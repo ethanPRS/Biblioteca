@@ -35,6 +35,19 @@ async function fetchLoanReceiptData(loanId) {
   return mapLoanReceipt(data);
 }
 
+async function fetchUserPhone(userId) {
+  const { data, error } = await supabase
+    .from('usuario')
+    .select('telefono')
+    .eq('id_usuario', userId)
+    .single();
+  if (error) {
+    console.warn('Error al obtener teléfono:', error.message);
+    return null;
+  }
+  return data?.telefono;
+}
+
 async function fetchReturnReceiptData(loanId) {
   const { data, error } = await supabase
     .from('prestamo')
@@ -84,7 +97,7 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { bookId, userId, borrowDate, dueDate, status, loanCopyId, telefonoUsuario } = req.body;
+  const { bookId, userId, borrowDate, dueDate, status, loanCopyId } = req.body;
   try {
     const { data: existingLoans, error: existingLoanError } = await supabase
       .from('prestamo')
@@ -136,9 +149,14 @@ router.post('/', async (req, res) => {
     let emailReceipt = { sent: false, reason: 'No se pudo generar el recibo.' };
 
     try {
-      const msj = `¡Hola! Tu préstamo del libro ha sido aprobado. Tienes hasta el ${dueDate} para devolverlo. \nAquí tienes tu recibo: ${receiptUrl}`;
-      console.log(`[WhatsApp Debug] Intentando enviar mensaje de prueba (texto libre) a ${telefonoUsuario}...`);
-      const response = await sendWhatsAppMessage(telefonoUsuario, msj);
+      const dbPhone = await fetchUserPhone(userId);
+      if (dbPhone) {
+        const msj = `¡Hola! Tu préstamo del libro ha sido aprobado. Tienes hasta el ${dueDate} para devolverlo. \nAquí tienes tu recibo: ${receiptUrl}`;
+        console.log(`[WhatsApp Debug] Intentando enviar mensaje de prueba (texto libre) a ${dbPhone}...`);
+        const response = await sendWhatsAppMessage(dbPhone, msj);
+      } else {
+        console.log(`[WhatsApp Debug] Usuario ${userId} no tiene teléfono registrado. No se envió msj.`);
+      }
       
       const receipt = await fetchLoanReceiptData(loan.id_prestamo);
       const pdfBuffer = generateLoanReceiptPdf(receipt);
@@ -199,7 +217,7 @@ router.get('/:id/return-receipt.pdf', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
-  const { status, finePaid, returnDate, condition, notes, telefonoUsuario } = req.body;
+  const { status, finePaid, returnDate, condition, notes } = req.body;
   const loanId = req.params.id;
   try {
     let returnReceiptResult = null;
@@ -303,9 +321,14 @@ router.put('/:id', async (req, res) => {
         const returnReceiptUrl = `${getRequestBaseUrl(req)}/api/loans/${loanId}/return-receipt.pdf?userId=${encodeURIComponent(String(loan.id_usuario))}`;
         try {
           const returnReceipt = await fetchReturnReceiptData(loanId);
-          const msj = `¡Hola! Hemos recibido la devolución de tu libro en la biblioteca. ¡Gracias por entregarlo a tiempo!`;
-          console.log(`[WhatsApp Debug] Intentando enviar mensaje de prueba (texto libre) a ${telefonoUsuario}...`);
-          const response = await sendWhatsAppMessage(telefonoUsuario, msj);
+          const dbPhone = await fetchUserPhone(loan.id_usuario);
+          if (dbPhone) {
+            const msj = `¡Hola! Hemos recibido la devolución de tu libro en la biblioteca. ¡Gracias por entregarlo a tiempo!`;
+            console.log(`[WhatsApp Debug] Intentando enviar mensaje de prueba (texto libre) a ${dbPhone}...`);
+            const response = await sendWhatsAppMessage(dbPhone, msj);
+          } else {
+            console.log(`[WhatsApp Debug] Usuario ${loan.id_usuario} no tiene teléfono registrado.`);
+          }
           
           const pdfBuffer = generateReturnReceiptPdf(returnReceipt);
           const emailReceipt = await sendReturnReceiptEmail(returnReceipt, pdfBuffer, returnReceiptUrl);
