@@ -328,7 +328,7 @@ router.put('/:id', async (req, res) => {
             const returnReceipt = await fetchReturnReceiptData(loanId);
             const dbPhone = await fetchUserPhone(loan.id_usuario);
             if (dbPhone) {
-              const msj = `¡Hola! Hemos recibido la devolución de tu libro en la biblioteca. ¡Gracias por entregarlo a tiempo!`;
+              const msj = `¡Hola! Hemos recibido la devolución de tu libro en la biblioteca. ¡Gracias por entregarlo a tiempo!\nAquí tienes tu recibo de devolución: ${returnReceiptUrl}`;
               console.log(`[WhatsApp Debug] Intentando enviar mensaje de prueba (texto libre) a ${dbPhone}...`);
               await sendWhatsAppMessage(dbPhone, msj);
             } else {
