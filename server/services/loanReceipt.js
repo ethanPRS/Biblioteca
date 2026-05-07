@@ -519,6 +519,7 @@ async function sendReceiptEmail({
     connectionTimeout: 5000,
     greetingTimeout: 5000,
     socketTimeout: 5000,
+    family: 4, // Forzar IPv4 para evitar el error ENETUNREACH con IPv6 en Render
   });
 
   try {
