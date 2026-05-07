@@ -521,22 +521,27 @@ async function sendReceiptEmail({
     socketTimeout: 5000,
   });
 
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: receipt.userEmail,
-    subject,
-    text: textLines.join('\n'),
-    html,
-    attachments: [
-      {
-        filename,
-        content: pdfBuffer,
-        contentType: 'application/pdf',
-      },
-    ],
-  });
-
-  return { sent: true };
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: receipt.userEmail,
+      subject,
+      text: textLines.join('\n'),
+      html,
+      attachments: [
+        {
+          filename,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    });
+    console.log(`[SMTP Debug] Correo enviado exitosamente a ${receipt.userEmail}`);
+    return { sent: true };
+  } catch (error) {
+    console.error(`[SMTP Debug] Error crítico enviando correo a ${receipt.userEmail}:`, error);
+    throw error;
+  }
 }
 
 export async function sendLoanReceiptEmail(receipt, pdfBuffer, receiptUrl) {
