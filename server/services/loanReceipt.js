@@ -497,10 +497,10 @@ async function sendReceiptEmail({
   html,
   filename,
 }) {
-  if (!process.env.RESEND_API_KEY) {
+  if (!process.env.BREVO_API_KEY) {
     return {
       sent: false,
-      reason: 'Falta configurar: RESEND_API_KEY',
+      reason: 'Falta configurar: BREVO_API_KEY',
     };
   }
 
@@ -512,38 +512,43 @@ async function sendReceiptEmail({
   }
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'api-key': process.env.BREVO_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Biblioteca <onboarding@resend.dev>',
-        to: receipt.userEmail,
+        sender: { 
+          name: 'Biblioteca', 
+          email: process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || 'biblioteca@example.com' 
+        },
+        to: [
+          { email: receipt.userEmail }
+        ],
         subject: subject,
-        text: textLines.join('\n'),
-        html: html,
-        attachments: [
+        textContent: textLines.join('\n'),
+        htmlContent: html,
+        attachment: [
           {
-            filename: filename,
+            name: filename,
             content: pdfBuffer.toString('base64')
           }
         ]
       })
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      console.error(`[Resend Debug] Error de API enviando a ${receipt.userEmail}:`, data);
-      throw new Error(data.message || 'Error desconocido de Resend');
+      console.error(`[Brevo Debug] Error de API enviando a ${receipt.userEmail}:`, data);
+      throw new Error(data.message || 'Error desconocido de Brevo');
     }
 
-    console.log(`[Resend Debug] Correo enviado exitosamente a ${receipt.userEmail} (ID: ${data.id})`);
+    console.log(`[Brevo Debug] Correo enviado exitosamente a ${receipt.userEmail} (ID: ${data.messageId})`);
     return { sent: true };
   } catch (error) {
-    console.error(`[Resend Debug] Error crítico enviando correo a ${receipt.userEmail}:`, error);
+    console.error(`[Brevo Debug] Error crítico enviando correo a ${receipt.userEmail}:`, error);
     return { sent: false, reason: error.message };
   }
 }
