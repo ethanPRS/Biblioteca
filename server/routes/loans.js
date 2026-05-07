@@ -148,26 +148,28 @@ router.post('/', async (req, res) => {
     const receiptUrl = `${getRequestBaseUrl(req)}/api/loans/${loan.id_prestamo}/receipt.pdf?userId=${encodeURIComponent(String(userId))}`;
     let emailReceipt = { sent: false, reason: 'No se pudo generar el recibo.' };
 
-    try {
-      const dbPhone = await fetchUserPhone(userId);
-      if (dbPhone) {
-        const msj = `¡Hola! Tu préstamo del libro ha sido aprobado. Tienes hasta el ${dueDate} para devolverlo. \nAquí tienes tu recibo: ${receiptUrl}`;
-        console.log(`[WhatsApp Debug] Intentando enviar mensaje de prueba (texto libre) a ${dbPhone}...`);
-        const response = await sendWhatsAppMessage(dbPhone, msj);
-      } else {
-        console.log(`[WhatsApp Debug] Usuario ${userId} no tiene teléfono registrado. No se envió msj.`);
+    // Lanzar notificaciones en segundo plano (Fire and Forget) para responder rápido
+    Promise.resolve().then(async () => {
+      try {
+        const dbPhone = await fetchUserPhone(userId);
+        if (dbPhone) {
+          const msj = `¡Hola! Tu préstamo del libro ha sido aprobado. Tienes hasta el ${dueDate} para devolverlo. \nAquí tienes tu recibo: ${receiptUrl}`;
+          console.log(`[WhatsApp Debug] Intentando enviar mensaje de prueba (texto libre) a ${dbPhone}...`);
+          await sendWhatsAppMessage(dbPhone, msj);
+        } else {
+          console.log(`[WhatsApp Debug] Usuario ${userId} no tiene teléfono registrado. No se envió msj.`);
+        }
+        
+        const receipt = await fetchLoanReceiptData(loan.id_prestamo);
+        const pdfBuffer = generateLoanReceiptPdf(receipt);
+        const emailReceipt = await sendLoanReceiptEmail(receipt, pdfBuffer, receiptUrl);
+        if (!emailReceipt.sent) {
+          console.warn(`[Receipt] Correo no enviado para prestamo ${loan.id_prestamo}: ${emailReceipt.reason}`);
+        }
+      } catch (receiptError) {
+        console.error(`[Receipt] Error al procesar notificaciones para prestamo ${loan.id_prestamo}:`, receiptError);
       }
-      
-      const receipt = await fetchLoanReceiptData(loan.id_prestamo);
-      const pdfBuffer = generateLoanReceiptPdf(receipt);
-      emailReceipt = await sendLoanReceiptEmail(receipt, pdfBuffer, receiptUrl);
-      if (!emailReceipt.sent) {
-        console.warn(`[Receipt] Correo no enviado para prestamo ${loan.id_prestamo}: ${emailReceipt.reason}`);
-      }
-    } catch (receiptError) {
-      console.warn(`[Receipt] Error al procesar recibo para prestamo ${loan.id_prestamo}: ${receiptError.message}`);
-      emailReceipt = { sent: false, reason: receiptError.message };
-    }
+    });
 
     res.status(201).json({
       id: String(loan.id_prestamo),
@@ -178,8 +180,8 @@ router.post('/', async (req, res) => {
       status: status || 'Activo',
       finePaid: false,
       receiptUrl,
-      emailReceiptSent: emailReceipt.sent,
-      emailReceiptMessage: emailReceipt.reason,
+      emailReceiptSent: true,
+      emailReceiptMessage: 'Procesando en segundo plano',
     });
   } catch (error) {
     console.error("Error fatal en POST /api/loans:", error);
@@ -320,35 +322,28 @@ router.put('/:id', async (req, res) => {
         }
 
         const returnReceiptUrl = `${getRequestBaseUrl(req)}/api/loans/${loanId}/return-receipt.pdf?userId=${encodeURIComponent(String(loan.id_usuario))}`;
-        try {
-          const returnReceipt = await fetchReturnReceiptData(loanId);
-          const dbPhone = await fetchUserPhone(loan.id_usuario);
-          if (dbPhone) {
-            const msj = `¡Hola! Hemos recibido la devolución de tu libro en la biblioteca. ¡Gracias por entregarlo a tiempo!`;
-            console.log(`[WhatsApp Debug] Intentando enviar mensaje de prueba (texto libre) a ${dbPhone}...`);
-            const response = await sendWhatsAppMessage(dbPhone, msj);
-          } else {
-            console.log(`[WhatsApp Debug] Usuario ${loan.id_usuario} no tiene teléfono registrado.`);
+        // Lanzar notificaciones de devolución en segundo plano
+        Promise.resolve().then(async () => {
+          try {
+            const returnReceipt = await fetchReturnReceiptData(loanId);
+            const dbPhone = await fetchUserPhone(loan.id_usuario);
+            if (dbPhone) {
+              const msj = `¡Hola! Hemos recibido la devolución de tu libro en la biblioteca. ¡Gracias por entregarlo a tiempo!`;
+              console.log(`[WhatsApp Debug] Intentando enviar mensaje de prueba (texto libre) a ${dbPhone}...`);
+              await sendWhatsAppMessage(dbPhone, msj);
+            } else {
+              console.log(`[WhatsApp Debug] Usuario ${loan.id_usuario} no tiene teléfono registrado.`);
+            }
+            
+            const pdfBuffer = generateReturnReceiptPdf(returnReceipt);
+            const emailReceipt = await sendReturnReceiptEmail(returnReceipt, pdfBuffer, returnReceiptUrl);
+            if (!emailReceipt.sent) {
+              console.warn(`[ReturnReceipt] Correo no enviado para prestamo ${loanId}: ${emailReceipt.reason}`);
+            }
+          } catch (returnReceiptError) {
+            console.error(`[ReturnReceipt] Error al procesar notificaciones para prestamo ${loanId}:`, returnReceiptError);
           }
-          
-          const pdfBuffer = generateReturnReceiptPdf(returnReceipt);
-          const emailReceipt = await sendReturnReceiptEmail(returnReceipt, pdfBuffer, returnReceiptUrl);
-          returnReceiptResult = {
-            receiptUrl: returnReceiptUrl,
-            emailSent: emailReceipt.sent,
-            emailMessage: emailReceipt.reason || null,
-          };
-          if (!emailReceipt.sent) {
-            console.warn(`[ReturnReceipt] Correo no enviado para prestamo ${loanId}: ${emailReceipt.reason}`);
-          }
-        } catch (returnReceiptError) {
-          console.warn(`[ReturnReceipt] Error al procesar recibo de devolucion para prestamo ${loanId}: ${returnReceiptError.message}`);
-          returnReceiptResult = {
-            receiptUrl: returnReceiptUrl,
-            emailSent: false,
-            emailMessage: returnReceiptError.message,
-          };
-        }
+        });
       }
     }
 
