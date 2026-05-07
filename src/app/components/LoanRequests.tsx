@@ -12,6 +12,7 @@ import { useLoanRequests } from '../context/LoanRequestContext';
 import { useLoans } from '../context/LoanContext';
 import { useSettings } from '../context/SettingsContext';
 import { useNotifications } from '../context/NotificationContext';
+import { createPortal } from 'react-dom';
 
 export function LoanRequests() {
   const { user: currentUser, users } = useAuth();
@@ -23,6 +24,10 @@ export function LoanRequests() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [processingRequestIds, setProcessingRequestIds] = useState<string[]>([]);
+  const [verifyPopup, setVerifyPopup] = useState<{ isOpen: boolean; status: 'loading' | 'success' | 'error'; message?: string; isRejection?: boolean }>({
+    isOpen: false,
+    status: 'loading'
+  });
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
   const isAdmin = currentUser?.role === 'Administrador' || currentUser?.role === 'Bibliotecario';
@@ -108,6 +113,7 @@ export function LoanRequests() {
     const dueDate = new Date(Date.now() + loanDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     setProcessingRequestIds(prev => [...prev, request.id]);
+    setVerifyPopup({ isOpen: true, status: 'loading', isRejection: false });
     try {
       const createdLoan = await addLoan({
         userId: request.userId,
@@ -118,7 +124,7 @@ export function LoanRequests() {
       });
 
       if (!createdLoan) {
-        alert('No se pudo aprobar la solicitud. Verifica si ya existe un prestamo activo para este libro.');
+        setVerifyPopup({ isOpen: true, status: 'error', message: 'No se pudo aprobar la solicitud. Verifica si ya existe un préstamo activo para este libro.' });
         return;
       }
 
@@ -143,6 +149,10 @@ export function LoanRequests() {
           targetUserId: request.userId,
         });
       }
+      
+      setVerifyPopup({ isOpen: true, status: 'success', message: 'La solicitud ha sido aprobada y las notificaciones fueron enviadas al usuario.' });
+    } catch {
+      setVerifyPopup({ isOpen: true, status: 'error', message: 'Ocurrió un error al procesar la aprobación.' });
     } finally {
       setProcessingRequestIds(prev => prev.filter(id => id !== request.id));
     }
@@ -152,6 +162,7 @@ export function LoanRequests() {
     if (isProcessingRequest(request.id) || request.status !== 'Pendiente') return;
 
     setProcessingRequestIds(prev => [...prev, request.id]);
+    setVerifyPopup({ isOpen: true, status: 'loading', isRejection: true });
     try {
       await updateLoanRequest(request.id, {
         status: 'Rechazada',
@@ -169,6 +180,10 @@ export function LoanRequests() {
           targetUserId: request.userId,
         });
       }
+      
+      setVerifyPopup({ isOpen: true, status: 'success', message: 'La solicitud ha sido rechazada y el usuario ha sido notificado.' });
+    } catch {
+      setVerifyPopup({ isOpen: true, status: 'error', message: 'Ocurrió un error al intentar rechazar la solicitud.' });
     } finally {
       setProcessingRequestIds(prev => prev.filter(id => id !== request.id));
     }
@@ -430,6 +445,94 @@ export function LoanRequests() {
           </div>
         </div>
       </div>
+
+      {verifyPopup.isOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(23, 23, 23, 0.4)', backdropFilter: 'blur(4px)' }}
+        >
+          <div
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onClick={() => verifyPopup.status === 'error' && setVerifyPopup({ isOpen: false, status: 'loading' })}
+          ></div>
+
+          <div
+            style={{ position: 'relative', backgroundColor: 'white', borderRadius: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', width: '100%', maxWidth: '22rem', padding: '2.5rem 1.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
+            className="animate-in fade-in zoom-in duration-200"
+          >
+            {(verifyPopup.status === 'success' || verifyPopup.status === 'error') && (
+              <button
+                onClick={() => setVerifyPopup({ isOpen: false, status: 'loading' })}
+                style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280' }}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+
+            {verifyPopup.status === 'loading' && (
+              <>
+                <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: verifyPopup.isRejection ? '#FEF2F2' : '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                  <div className={`w-9 h-9 border-4 ${verifyPopup.isRejection ? 'border-red-500' : 'border-[#2B74FF]'} border-t-transparent rounded-full animate-spin`}></div>
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>
+                  {verifyPopup.isRejection ? 'Rechazando Solicitud...' : 'Aprobando Solicitud...'}
+                </h3>
+                <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                  Procesando la transacción y enviando notificaciones.
+                </p>
+                <button
+                  disabled
+                  style={{ width: '100%', backgroundColor: verifyPopup.isRejection ? '#FCA5A5' : '#93C5FD', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'not-allowed', fontSize: '1rem' }}
+                >
+                  Procesando
+                </button>
+              </>
+            )}
+
+            {verifyPopup.status === 'success' && (
+              <>
+                <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: verifyPopup.isRejection ? '#FEE2E2' : '#E0F2E9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                  {verifyPopup.isRejection ? (
+                    <X className="w-10 h-10 text-red-500 animate-in zoom-in" />
+                  ) : (
+                    <Check className="w-10 h-10 text-green-500 animate-in zoom-in" />
+                  )}
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>
+                  {verifyPopup.isRejection ? 'Rechazo Completado' : 'Aprobación Exitosa'}
+                </h3>
+                <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                  {verifyPopup.message}
+                </p>
+                <button
+                  onClick={() => setVerifyPopup({ isOpen: false, status: 'loading' })}
+                  style={{ width: '100%', backgroundColor: verifyPopup.isRejection ? '#EF4444' : '#22C55E', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontSize: '1rem', transition: 'background-color 0.2s' }}
+                >
+                  Completar
+                </button>
+              </>
+            )}
+
+            {verifyPopup.status === 'error' && (
+              <>
+                <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                  <X className="w-10 h-10 text-red-500 animate-in zoom-in" />
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>No se pudo procesar</h3>
+                <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                  {verifyPopup.message}
+                </p>
+                <button
+                  onClick={() => setVerifyPopup({ isOpen: false, status: 'loading' })}
+                  style={{ width: '100%', backgroundColor: '#EF4444', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontSize: '1rem', transition: 'background-color 0.2s' }}
+                >
+                  Cerrar
+                </button>
+              </>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

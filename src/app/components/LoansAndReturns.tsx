@@ -11,6 +11,7 @@ import { useBooks } from '../context/BookContext';
 import { useLoans, Loan } from '../context/LoanContext';
 import { useSettings } from '../context/SettingsContext';
 import { useNotifications } from '../context/NotificationContext';
+import { createPortal } from 'react-dom';
 
 export function LoansAndReturns() {
   const { user: currentUser, users } = useAuth();
@@ -34,6 +35,10 @@ export function LoansAndReturns() {
   const [returnCondition, setReturnCondition] = useState<string>('Buen Estado');
   const [returningLoanIds, setReturningLoanIds] = useState<string[]>([]);
   const [isConfirmingReturn, setIsConfirmingReturn] = useState(false);
+  const [verifyPopup, setVerifyPopup] = useState<{ isOpen: boolean; status: 'loading' | 'success' | 'error'; message?: string }>({
+    isOpen: false,
+    status: 'loading'
+  });
 
   const isAdmin = currentUser?.role === 'Administrador' || currentUser?.role === 'Bibliotecario';
 
@@ -186,6 +191,8 @@ export function LoansAndReturns() {
 
     setIsConfirmingReturn(true);
     setReturningLoanIds(prev => [...prev, selectedLoanForReturn.id]);
+    setIsReturnModalOpen(false);
+    setVerifyPopup({ isOpen: true, status: 'loading' });
     try {
       const result = await updateLoan(selectedLoanForReturn.id, {
         status: 'Devuelto',
@@ -193,11 +200,11 @@ export function LoansAndReturns() {
       });
 
       if (!result.success) {
-        toast.error(result.error || 'No se pudo registrar la devolución');
+        setVerifyPopup({ isOpen: true, status: 'error', message: result.error || 'No se pudo registrar la devolución' });
         return;
       }
 
-      toast.success('Devolución registrada con éxito');
+      setVerifyPopup({ isOpen: true, status: 'success', message: 'La devolución ha sido procesada correctamente y el recibo fue enviado.' });
 
       addNotification({
         title: 'Devolución Registrada',
@@ -206,11 +213,12 @@ export function LoansAndReturns() {
         targetUserId: null,
       });
 
-      setIsReturnModalOpen(false);
       setSelectedLoanForReturn(null);
+    } catch {
+      setVerifyPopup({ isOpen: true, status: 'error', message: 'Ocurrió un error inesperado al procesar la devolución.' });
     } finally {
       setIsConfirmingReturn(false);
-      setReturningLoanIds(prev => prev.filter(id => id !== selectedLoanForReturn.id));
+      setReturningLoanIds(prev => prev.filter(id => id !== selectedLoanForReturn?.id));
     }
   };
 
@@ -607,6 +615,86 @@ export function LoansAndReturns() {
             </div>
           </div>
         </div>
+      )}
+
+      {verifyPopup.isOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(23, 23, 23, 0.4)', backdropFilter: 'blur(4px)' }}
+        >
+          <div
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onClick={() => verifyPopup.status === 'error' && setVerifyPopup({ isOpen: false, status: 'loading' })}
+          ></div>
+
+          <div
+            style={{ position: 'relative', backgroundColor: 'white', borderRadius: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', width: '100%', maxWidth: '22rem', padding: '2.5rem 1.5rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
+            className="animate-in fade-in zoom-in duration-200"
+          >
+            {(verifyPopup.status === 'success' || verifyPopup.status === 'error') && (
+              <button
+                onClick={() => setVerifyPopup({ isOpen: false, status: 'loading' })}
+                style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280' }}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+
+            {verifyPopup.status === 'loading' && (
+              <>
+                <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                  <div className="w-9 h-9 border-4 border-[#2B74FF] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>Procesando Devolución...</h3>
+                <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                  Enviando notificaciones y registrando en sistema, por favor espera.
+                </p>
+                <button
+                  disabled
+                  style={{ width: '100%', backgroundColor: '#93C5FD', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'not-allowed', fontSize: '1rem' }}
+                >
+                  Procesando
+                </button>
+              </>
+            )}
+
+            {verifyPopup.status === 'success' && (
+              <>
+                <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: '#E0F2E9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                  <CheckCircle2 className="w-10 h-10 text-green-500 animate-in zoom-in" />
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>Devolución Exitosa</h3>
+                <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                  {verifyPopup.message}
+                </p>
+                <button
+                  onClick={() => setVerifyPopup({ isOpen: false, status: 'loading' })}
+                  style={{ width: '100%', backgroundColor: '#22C55E', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontSize: '1rem', transition: 'background-color 0.2s' }}
+                >
+                  Completar
+                </button>
+              </>
+            )}
+
+            {verifyPopup.status === 'error' && (
+              <>
+                <div style={{ width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                  <AlertTriangle className="w-10 h-10 text-red-500 animate-in zoom-in" />
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.75rem' }}>No se pudo procesar</h3>
+                <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                  {verifyPopup.message}
+                </p>
+                <button
+                  onClick={() => setVerifyPopup({ isOpen: false, status: 'loading' })}
+                  style={{ width: '100%', backgroundColor: '#EF4444', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontSize: '1rem', transition: 'background-color 0.2s' }}
+                >
+                  Cerrar
+                </button>
+              </>
+            )}
+          </div>
+        </div>,
+        document.body
       )}
     </>
   );
