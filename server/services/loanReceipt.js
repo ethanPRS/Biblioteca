@@ -516,9 +516,9 @@ async function sendReceiptEmail({
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
-    socketTimeout: 5000,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
     family: 4, // Forzar IPv4 para evitar el error ENETUNREACH con IPv6 en Render
   });
 
