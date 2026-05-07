@@ -1,4 +1,3 @@
-import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -498,50 +497,54 @@ async function sendReceiptEmail({
   html,
   filename,
 }) {
-  const required = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
-  const missing = required.filter(key => !process.env[key]);
-
-  if (missing.length || !receipt.userEmail) {
+  if (!process.env.RESEND_API_KEY) {
     return {
       sent: false,
-      reason: !receipt.userEmail ? 'El usuario no tiene correo registrado.' : `Falta configurar: ${missing.join(', ')}`,
+      reason: 'Falta configurar: RESEND_API_KEY',
     };
   }
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || Number(process.env.SMTP_PORT) === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    family: 4, // Forzar IPv4 para evitar el error ENETUNREACH con IPv6 en Render
-  });
+  if (!receipt.userEmail) {
+    return {
+      sent: false,
+      reason: 'El usuario no tiene correo registrado.',
+    };
+  }
 
   try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to: receipt.userEmail,
-      subject,
-      text: textLines.join('\n'),
-      html,
-      attachments: [
-        {
-          filename,
-          content: pdfBuffer,
-          contentType: 'application/pdf',
-        },
-      ],
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Biblioteca <onboarding@resend.dev>',
+        to: receipt.userEmail,
+        subject: subject,
+        text: textLines.join('\n'),
+        html: html,
+        attachments: [
+          {
+            filename: filename,
+            content: pdfBuffer.toString('base64')
+          }
+        ]
+      })
     });
-    console.log(`[SMTP Debug] Correo enviado exitosamente a ${receipt.userEmail}`);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error(`[Resend Debug] Error de API enviando a ${receipt.userEmail}:`, data);
+      throw new Error(data.message || 'Error desconocido de Resend');
+    }
+
+    console.log(`[Resend Debug] Correo enviado exitosamente a ${receipt.userEmail} (ID: ${data.id})`);
     return { sent: true };
   } catch (error) {
-    console.error(`[SMTP Debug] Error crítico enviando correo a ${receipt.userEmail}:`, error);
-    throw error;
+    console.error(`[Resend Debug] Error crítico enviando correo a ${receipt.userEmail}:`, error);
+    return { sent: false, reason: error.message };
   }
 }
 
