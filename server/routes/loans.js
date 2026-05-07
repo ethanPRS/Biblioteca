@@ -182,6 +182,7 @@ router.post('/', async (req, res) => {
       emailReceiptMessage: emailReceipt.reason,
     });
   } catch (error) {
+    console.error("Error fatal en POST /api/loans:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -375,6 +376,7 @@ router.put('/:id', async (req, res) => {
 
     res.json({ id: loanId, ...req.body, returnReceipt: returnReceiptResult });
   } catch (error) {
+    console.error("Error fatal en PUT /api/loans/:id:", error);
     res.status(500).json({ error: error.message });
   }
 });
