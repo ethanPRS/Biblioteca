@@ -12,7 +12,10 @@ const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
  * @param {string} message - El mensaje a enviar
  */
 export const sendWhatsAppMessage = async (to, message) => {
-  const cleanTo = to.replace(/\D/g, '');
+  let cleanTo = to.replace(/\D/g, '');
+  if (cleanTo.length === 10) {
+    cleanTo = '52' + cleanTo;
+  }
 
   if (!WHATSAPP_TOKEN) {
     console.log(`[SIMULACIÓN WHATSAPP] Mensaje para ${cleanTo}: ${message}`);
@@ -54,7 +57,10 @@ export const sendWhatsAppMessage = async (to, message) => {
  * @param {Array} parameters - Arreglo de strings con las variables de la plantilla [{type: "text", text: "valor"}]
  */
 export const sendWhatsAppTemplate = async (to, templateName, parameters = []) => {
-  const cleanTo = to.replace(/\D/g, '');
+  let cleanTo = to.replace(/\D/g, '');
+  if (cleanTo.length === 10) {
+    cleanTo = '52' + cleanTo;
+  }
 
   if (!WHATSAPP_TOKEN) {
     console.log(`[SIMULACIÓN WHATSAPP] Plantilla '${templateName}' enviada a ${cleanTo} con params:`, parameters);
