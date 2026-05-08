@@ -125,8 +125,13 @@ export function UserManagement() {
   };
 
   const savePermissions = () => {
-    updateRolePermissions(selectedRole, tempPermissions);
-    setIsPermissionsModalOpen(false);
+    try {
+      updateRolePermissions(selectedRole, tempPermissions);
+      setIsPermissionsModalOpen(false);
+      toast.success('Permisos guardados', { description: `Se actualizaron correctamente los accesos para el rol de ${selectedRole}.` });
+    } catch (error) {
+      toast.error('Error', { description: 'No se pudieron guardar los permisos en este momento.' });
+    }
   };
 
   const handleSearchExternalUser = async (e: React.FormEvent) => {
