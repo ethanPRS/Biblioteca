@@ -140,7 +140,6 @@ export function Catalog() {
               <p className="text-sm md:text-base text-neutral-400 font-medium mt-1">Explora, consulta y solicita libros en tiempo real</p>
             </div>
             
-            {isAdmin && (
               <button 
                 onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
                 className="bg-white border border-neutral-200 text-neutral-600 hover:text-[#2B74FF] hover:border-[#B5DBF7] hover:bg-[#B5DBF7]/10 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2"
@@ -157,7 +156,6 @@ export function Catalog() {
                   </>
                 )}
               </button>
-            )}
           </div>
 
           {/* Retractable Category Menu (Mobile) */}
