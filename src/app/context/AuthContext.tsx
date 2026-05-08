@@ -120,6 +120,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Subscribe to real-time changes on users domain
   useRealtimeSubscription(['users'], debouncedRefetch);
 
+  // Sync role permissions across multiple tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'rolePermissions' && e.newValue) {
+        try {
+          setRolePermissions(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error('Error parsing storage permissions', err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const login = async (username: string, pass: string) => {
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
