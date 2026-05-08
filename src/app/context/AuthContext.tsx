@@ -40,6 +40,18 @@ const INITIAL_ROLE_PERMISSIONS: RolePermissions = {
   'Colaborador': ['catalogo', 'mis-libros', 'solicitudes']
 };
 
+const getInitialPermissions = (): RolePermissions => {
+  const saved = localStorage.getItem('rolePermissions');
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error('Error parsing role permissions from local storage', e);
+    }
+  }
+  return INITIAL_ROLE_PERMISSIONS;
+};
+
 export interface User {
   id: string;
   name: string;
@@ -75,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
-  const [rolePermissions, setRolePermissions] = useState<RolePermissions>(INITIAL_ROLE_PERMISSIONS);
+  const [rolePermissions, setRolePermissions] = useState<RolePermissions>(getInitialPermissions());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchUsers = useCallback(async () => {
@@ -196,7 +208,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateRolePermissions = (role: Role, permissions: Screen[]) => {
-    setRolePermissions(prev => ({ ...prev, [role]: permissions }));
+    setRolePermissions(prev => {
+      const newPermissions = { ...prev, [role]: permissions };
+      localStorage.setItem('rolePermissions', JSON.stringify(newPermissions));
+      return newPermissions;
+    });
   };
 
   const getUserPermissions = (role: Role): Screen[] => {
